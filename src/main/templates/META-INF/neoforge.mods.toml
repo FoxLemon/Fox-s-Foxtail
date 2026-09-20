@@ -1,87 +1,77 @@
-# This is an example neoforge.mods.toml file. It contains the data relating to the loading mods.
-# There are several mandatory fields (#mandatory), and many more that are optional (#optional).
-# The overall format is standard TOML format, v0.5.0.
-# Note that there are a couple of TOML lists in this file.
-# Find more information on toml format here:  https://github.com/toml-lang/toml
+# Loading metadata for Fox's Foxtail.
+# Gradle fills in placeholder values from gradle.properties when building the mod.
+# The completed file is packaged as META-INF/neoforge.mods.toml in the JAR.
 
-# The license for you mod. This is mandatory metadata and allows for easier comprehension of your redistributive properties.
-# Review your options at https://choosealicense.com/. All rights reserved is the default copyright stance, and is thus the default here.
+# License displayed in the Mods menu, supplied by gradle.properties.
 license="${mod_license}"
 
-# A URL to refer people to when problems occur with this mod
+# Optional issue tracker; replace the placeholder before enabling.
 #issueTrackerURL="https://change.me.to.your.issue.tracker.example.invalid/" #optional
 
-# A list of mods - how many allowed here is determined by the individual mod loader
+# Identity and display information for Fox's Foxtail.
 [[mods]] #mandatory
 
-# The modid of the mod
+# Must match the @Mod ID and the assets namespace in the source code.
 modId="${mod_id}" #mandatory
 
-# The version number of the mod
+# Release version supplied by gradle.properties.
 version="${mod_version}" #mandatory
 
-# A display name for the mod
+# Name shown in the Mods menu.
 displayName="${mod_name}" #mandatory
 
-# A URL to query for updates for this mod. See the JSON update specification https://docs.neoforged.net/docs/misc/updatechecker/
+# Optional update checker; requires a published NeoForge update JSON file.
 #updateJSONURL="https://change.me.example.invalid/updates.json" #optional
 
-# A URL for the "homepage" for this mod, displayed in the mod UI
+# Optional project homepage; replace the placeholder before enabling.
 #displayURL="https://change.me.to.your.mods.homepage.example.invalid/" #optional
 
-# A file name (in the root of the mod JAR) containing a logo for display
-#logoFile="examplemod.png" #optional
+# Optional logo; replace the placeholder with an image packaged at the JAR root.
+#logoFile="logo.png" #optional
 
-# A text field displayed in the mod UI
+# Optional credits shown in the Mods menu.
 #credits="" #optional
 
-# The authors of the mod, displayed in the mod UI (optional)
+# Optional author information from gradle.properties; currently disabled.
 #authors="${mod_author}"
 
-# The description text for the mod (multi line!) (#mandatory)
+# Description supplied by gradle.properties.
 description='''
 ${mod_description}
 '''
 
-# The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
+# Optional mixin registration; enable only if the mod adds a mixin config.
 #[[mixins]]
 #config="${mod_id}.mixins.json"
 
-# The [[accessTransformers]] block allows you to declare where your AT file is.
-# If this block is omitted, a fallback attempt will be made to load an AT from META-INF/accesstransformer.cfg
+# Optional explicit access-transformer location; currently unused.
 #[[accessTransformers]]
 #file="META-INF/accesstransformer.cfg"
 
-# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
+# NeoForge is required to load Fox's Foxtail.
 [[dependencies.${mod_id}]] #optional
-    # the modid of the dependency
+    # Loader dependency ID.
     modId="neoforge" #mandatory
-    # The type of the dependency. Can be one of "required", "optional", "incompatible" or "discouraged" (case insensitive).
-    # 'required' requires the mod to exist, 'optional' does not
-    # 'incompatible' will prevent the game from loading when the mod exists, and 'discouraged' will show a warning
+    # Loading requires this dependency to be present.
     type="required" #mandatory
-    # Optional field describing why the dependency is required or why it is incompatible
+    # Optional explanation for the dependency.
     # reason="..."
-    # The version range of the dependency
+    # Accept the configured NeoForge version or newer; compatibility still needs testing.
     versionRange="[${neo_version},)" #mandatory
-    # An ordering relationship for the dependency.
-    # BEFORE - This mod is loaded BEFORE the dependency
-    # AFTER - This mod is loaded AFTER the dependency
+    # No additional loading order is requested.
     ordering="NONE"
-    # Side this dependency is applied on - BOTH, CLIENT, or SERVER
+    # Check this dependency on both sides; rendering remains client-side code.
     side="BOTH"
 
-# Here's another dependency
+# Minecraft versions accepted by Fox's Foxtail.
 [[dependencies.${mod_id}]]
     modId="minecraft"
     type="required"
-    # This version range declares a minimum of the current minecraft version up to but not including the next major version
+    # Uses the configured range; [26.1.2] accepts only that exact version.
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
 
-# Features are specific properties of the game environment, that you may want to declare you require. This example declares
-# that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
-# stop your mod loading on the server for example.
+# Optional graphics requirement; disabled, so no extra OpenGL constraint is declared here.
 #[features.${mod_id}]
 #openGLVersion="[3.2,)"

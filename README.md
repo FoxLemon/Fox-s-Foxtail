@@ -1,25 +1,89 @@
+# Fox's Foxtail
 
-Installation information
-=======
+A cosmetic Minecraft mod by **FoxLemon** that adds a fox tail to the player, with adjustable angles and spring-based movement.
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+This repository contains the **NeoForge version**, currently under development. Features and animation behaviour may change between releases.
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+## Current target
 
-If at any point you are missing libraries in your IDE, or you've run into problems you can
-run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
-{this does not affect your code} and then start the process again.
+| Component | Version |
+| --- | --- |
+| Minecraft | 26.1.2 |
+| NeoForge development target | 26.1.2.109 |
+| Java | 25 |
+| Mod | 0.1.3 |
 
-Mapping Names:
-============
-By default, the MDK is configured to use the official mapping names from Mojang for methods and fields 
-in the Minecraft codebase. These names are covered by a specific license. All modders should be aware of this
-license. For the latest license text, refer to the mapping file itself, or the reference copy here:
-https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
+## Features
+
+- A textured fox tail attached to the player's torso, supporting normal and slim player models.
+- A root, middle, and tip model hierarchy.
+- Movement-driven spring bending and a twist response to torso roll.
+- Adjustable root elevation from **−90° to +90°**.
+- A custom settings screen with sliders, a player preview, Reset defaults, Save, and Cancel.
+
+Physics currently runs for the local player only. Other players can render with tails, but do not receive their own movement-driven simulation. The middle and tip currently use the same spring output; they are not independent physical segments.
+
+## Installation
+
+1. Set up a Minecraft **26.1.2** instance with NeoForge **26.1.2.109**.
+2. Place the built mod JAR in that instance's `mods` folder.
+3. Launch Minecraft and switch to third person to see the tail.
+
+The tail rendering and settings run on the client. Other players need the mod on their own clients to see its effects. Compatibility with animation mods and modpacks still needs individual testing.
+
+## Settings
+
+Open **Mods → Fox's Foxtail → Config**.
+
+| Setting | Effect |
+| --- | --- |
+| Movement strength | How strongly movement and torso roll drive the spring. |
+| Frequency | How quickly the spring responds; higher values feel stiffer. |
+| Damping | How much the spring's oscillation is reduced. |
+| Response | How the spring reacts initially to changes in its target. |
+| Maximum target bend | Limits the target angle per axis; spring overshoot can exceed it. |
+| Root angle | Raises or lowers the whole tail. The middle and tip inherit this angle. |
+
+The preview uses a repeating test impulse to demonstrate the draft settings. Join a world to see the player preview. **Save** applies and stores changes; **Cancel** or Escape discards them. **Reset defaults** resets the draft, which must still be saved.
+
+## Building from source
+
+Use **JDK 25** and run the Gradle wrapper from the project directory.
+
+### macOS / Linux
+
+```sh
+bash ./gradlew build
+```
+
+### Windows
+
+```powershell
+.\gradlew.bat build
+```
+
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-0.1.3.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
+
+To launch the development client:
+
+```sh
+bash ./gradlew runClient
+```
+
+On Windows, use `.\gradlew.bat runClient`. The development game's files are stored in `run/`.
+
+## Project layout
+
+- `src/main/java/net/foxlemon/foxsfoxtail/` — mod entry point and configuration.
+- `src/main/java/net/foxlemon/foxsfoxtail/client/` — rendering, model animation, physics, and settings screen.
+- `src/main/resources/assets/foxsfoxtail/` — texture and language resources.
+- `src/main/templates/META-INF/neoforge.mods.toml` — mod metadata; Gradle fills in values from `gradle.properties`.
+- `model/fox_tail.bbmodel` — editable Blockbench model.
+
+## Credits and license
+
+Created by **FoxLemon**, using the NeoForge MDK and Blockbench.
+
+The project declares **MIT** in its mod metadata. See `TEMPLATE_LICENSE.txt` for the NeoForge MDK template's original license notice.
