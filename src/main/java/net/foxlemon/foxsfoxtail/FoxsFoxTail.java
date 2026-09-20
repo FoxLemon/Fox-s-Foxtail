@@ -20,7 +20,7 @@ public class FoxsFoxTail {
     public FoxsFoxTail(IEventBus modEventBus, ModContainer modContainer) {
         // NeoForge supplies the event bus and container when loading the mod.
         // Rendering is registered by FoxTailClient.
-        // Register configuration here once FoxTailConfig is implemented.
+        // Client configuration is also registered by FoxTailClient.
     }
 
 }

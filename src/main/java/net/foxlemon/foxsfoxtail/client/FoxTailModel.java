@@ -19,7 +19,6 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     // Child segments inherit their parent's motion: tail -> middle -> tip.
     private final ModelPart tail;
     private final ModelPart middle;
-    @SuppressWarnings("unused")
     private final ModelPart tip;
 
     public FoxTailModel(ModelPart root) {
@@ -61,10 +60,27 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
         "main"
     );
 
+    @Override
     public void setupAnim(AvatarRenderState state) {
-        // Reset exported poses before applying animation angles (in radians).
-        // Apply physics results here; advance the simulation separately from drawing.
         super.setupAnim(state);
-        // TODO: Implement setupAnim after Physic and Animation is added
+
+        // This export runs along +X, so elevation rotates the root around Z.
+        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0));
+        tail.zRot += angle;
+        // Keep the attachment fixed: the exported base is (-8, -6) from its pivot.
+        tail.x += -8 + 8 * (float) Math.cos(angle) - 6 * (float) Math.sin(angle);
+        tail.y += -6 + 8 * (float) Math.sin(angle) + 6 * (float) Math.cos(angle);
+
+        var middleRotation = state.getRenderDataOrDefault(FoxTailClient.TAIL_ROTATION, net.minecraft.world.phys.Vec3.ZERO);
+
+        middle.zRot += (float) middleRotation.z;
+        middle.yRot += (float) middleRotation.y;
+        middle.xRot += (float) middleRotation.x;
+
+        var tipRotation = state.getRenderDataOrDefault(FoxTailClient.TAIL_ROTATION, net.minecraft.world.phys.Vec3.ZERO);
+
+        tip.zRot += (float) tipRotation.z;
+        tip.yRot += (float) tipRotation.y;
+        tip.xRot += (float) tipRotation.x;
     }
 }

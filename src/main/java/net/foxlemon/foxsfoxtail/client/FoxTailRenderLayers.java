@@ -19,7 +19,7 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
 
     // The extra model drawn by this layer is separate from the player's model.
     private final FoxTailModel model;
-
+    
     // Path inside assets/foxsfoxtail; must match the PNG's actual location.
     private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(
         FoxsFoxTail.MODID,
@@ -27,12 +27,10 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
     );
 
     public FoxTailRenderLayers(RenderLayerParent<AvatarRenderState, PlayerModel> renderer, EntityModelSet entityModelSet) {
-    super(renderer);
-    // Baking turns the registered geometry recipe into drawable model parts.
-    this.model = new FoxTailModel(
-        entityModelSet.bakeLayer(FoxTailModel.MY_LAYER)
-    );
-}
+        super(renderer);
+        // Baking turns the registered geometry recipe into drawable model parts.
+        this.model = new FoxTailModel(entityModelSet.bakeLayer(FoxTailModel.MY_LAYER));
+    }
 
     @Override 
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, AvatarRenderState renderState, float yRot, float xRot) {
@@ -41,6 +39,8 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         poseStack.pushPose();
         var playerModel = getParentModel();
         playerModel.setupAnim(renderState);
+        // Supply torso roll in radians for the next physics tick.
+        FoxTailClient.recordBaseRoll(renderState, playerModel.body.zRot);
 
         // Follow both overall model motion and the torso's local pose, in that order.
         playerModel.root().translateAndRotate(poseStack);
@@ -66,9 +66,10 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
                 lightCoords, 
                 OverlayTexture.NO_OVERLAY, 
                 renderState.outlineColor, 
-                null);
-        
+                null
+        );
         poseStack.popPose();
+        
     }
 
 }
