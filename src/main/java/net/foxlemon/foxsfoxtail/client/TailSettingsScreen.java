@@ -14,6 +14,7 @@ import org.joml.Vector3f;
 
 // Like the Forge screen, settings remain a draft until Save is pressed.
 public final class TailSettingsScreen extends Screen {
+    
     private final Screen parent;
     private final ModConfigSpec.DoubleValue[] settings = {
         FoxTailConfig.MOVEMENT_STRENGTH, FoxTailConfig.FREQUENCY,
@@ -82,8 +83,9 @@ public final class TailSettingsScreen extends Screen {
             state.yRot = 0;
             state.xRot = 0;
             state.setRenderData(FoxTailClient.TAIL_ANGLE, draft[5]);
-            state.setRenderData(FoxTailClient.TAIL_ROTATION,
-                previousPreview.lerp(preview, Math.max(0, Math.min(1, partialTick))));
+            Vec3 previewRotation = previousPreview.lerp( preview, Math.max(0, Math.min(1, partialTick)));
+            state.setRenderData(FoxTailClient.MIDDLE_ROTATION, previewRotation);
+            state.setRenderData(FoxTailClient.TIP_ROTATION, previewRotation);
             FoxTailClient.disablePhysicsRecording(state);
             graphics.entity(state, 55, new Vector3f(0, state.boundingBoxHeight / 2, 0),
                 new Quaternionf().rotateZ((float) Math.PI), null,
@@ -124,4 +126,5 @@ public final class TailSettingsScreen extends Screen {
             updateMessage();
         }
     }
+
 }

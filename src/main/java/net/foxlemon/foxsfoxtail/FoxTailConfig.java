@@ -33,7 +33,7 @@ public class FoxTailConfig {
 
     public static final ModConfigSpec.DoubleValue TAIL_ANGLE = BUILDER
         .comment("Root elevation in degrees: negative lowers the tail, positive raises it.")
-        .defineInRange("tailAngle", 0.0, -90.0, 90.0);
+        .defineInRange("tailAngle", -40.0, -90.0, 90.0);
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 }

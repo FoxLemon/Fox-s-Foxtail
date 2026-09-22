@@ -12,6 +12,8 @@ import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.context.ContextKey;
+import net.minecraft.world.phys.Vec3;
 
 // Tail geometry and poses. AvatarRenderState supplies the player's rendering data.
 public class FoxTailModel extends EntityModel<AvatarRenderState> {
@@ -64,23 +66,54 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     public void setupAnim(AvatarRenderState state) {
         super.setupAnim(state);
 
-        // This export runs along +X, so elevation rotates the root around Z.
-        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0));
-        tail.zRot += angle;
-        // Keep the attachment fixed: the exported base is (-8, -6) from its pivot.
-        tail.x += -8 + 8 * (float) Math.cos(angle) - 6 * (float) Math.sin(angle);
-        tail.y += -6 + 8 * (float) Math.sin(angle) + 6 * (float) Math.cos(angle);
+        setupAvoidance(state);
 
-        var middleRotation = state.getRenderDataOrDefault(FoxTailClient.TAIL_ROTATION, net.minecraft.world.phys.Vec3.ZERO);
-
-        middle.zRot += (float) middleRotation.z;
-        middle.yRot += (float) middleRotation.y;
-        middle.xRot += (float) middleRotation.x;
-
-        var tipRotation = state.getRenderDataOrDefault(FoxTailClient.TAIL_ROTATION, net.minecraft.world.phys.Vec3.ZERO);
-
-        tip.zRot += (float) tipRotation.z;
-        tip.yRot += (float) tipRotation.y;
-        tip.xRot += (float) tipRotation.x;
+        setupPhysics(middle, state, FoxTailClient.MIDDLE_ROTATION);
+        setupPhysics(tip, state, FoxTailClient.TIP_ROTATION);
     }
+
+    private void setupPhysics(ModelPart part, AvatarRenderState state, ContextKey<Vec3> key) {
+        Vec3 rotation = state.getRenderDataOrDefault(key, Vec3.ZERO);
+        part.zRot += (float) rotation.z;
+        part.yRot += (float) rotation.y;
+        part.xRot += (float) rotation.x;
+    }
+
+    private void setupAvoidance(AvatarRenderState state) {
+        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0));
+
+        Vec3 avoidance = state.getRenderDataOrDefault(FoxTailClient.TAIL_AVOIDANCE, Vec3.ZERO);
+        float twist = (float) Math.toRadians(avoidance.x);
+        float sway = (float) Math.toRadians(avoidance.y);
+
+        tail.zRot += angle;
+        tail.yRot += sway;
+        tail.xRot += twist;
+
+        // Keep the attachment fixed while rotating around both axes.
+        // ModelPart applies Y rotation before Z rotation.
+        float cosAngle = (float) Math.cos(angle);
+        float sinAngle = (float) Math.sin(angle);
+        float cosSway = (float) Math.cos(sway);
+        float sinSway = (float) Math.sin(sway);
+        float cosTwist = (float) Math.cos(twist);
+        float sinTwist = (float) Math.sin(twist);
+
+        // Rotate the attachment point (-8, -6, 0):
+        // first around X (twist), then Y (sway), then Z (elevation).
+        float afterX_Y = -6 * cosTwist;
+        float afterX_Z = -6 * sinTwist;
+
+        float afterY_X = -8 * cosSway + afterX_Z * sinSway;
+        float afterY_Z = 8 * sinSway + afterX_Z * cosSway;
+
+        float rotatedX = afterY_X * cosAngle - afterX_Y * sinAngle;
+        float rotatedY = afterY_X * sinAngle + afterX_Y * cosAngle;
+
+        // Original attachment minus rotated attachment keeps the base fixed.
+        tail.x += -8 - rotatedX;
+        tail.y += -6 - rotatedY;
+        tail.z += -afterY_Z;
+    }
+
 }

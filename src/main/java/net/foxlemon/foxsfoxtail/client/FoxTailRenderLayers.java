@@ -8,11 +8,12 @@ import net.minecraft.client.model.geom.EntityModelSet;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 
 // Adds the tail to the existing player renderer. PlayerModel is the parent's model.
 public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerModel> {
@@ -39,6 +40,11 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         poseStack.pushPose();
         var playerModel = getParentModel();
         playerModel.setupAnim(renderState);
+
+        Vec3 avoidance = TailPose.legAvoidance(playerModel.leftLeg.xRot, playerModel.rightLeg.xRot, 1.0F);
+
+        renderState.setRenderData(FoxTailClient.TAIL_AVOIDANCE, avoidance);
+
         // Supply torso roll in radians for the next physics tick.
         FoxTailClient.recordBaseRoll(renderState, playerModel.body.zRot);
 
@@ -55,7 +61,7 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         // Compensate for this export's base position; revisit after moving its pivot.
         poseStack.translate(8.0/16.0, -18.0/16.0, 0);
 
-        // Queue the textured model with world lighting and no damage overlay.
+        // Use the player's hurt/death overlay so the tail flashes red with the body.
         collector
             .order(1)
             .submitModel(
@@ -64,12 +70,11 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
                 poseStack, 
                 RenderTypes.entityCutout(TEXTURE), 
                 lightCoords, 
-                OverlayTexture.NO_OVERLAY, 
+                LivingEntityRenderer.getOverlayCoords(renderState, 0.0F),
                 renderState.outlineColor, 
                 null
         );
-        poseStack.popPose();
-        
+        poseStack.popPose();   
     }
 
 }
