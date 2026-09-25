@@ -33,6 +33,9 @@ import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEve
 @EventBusSubscriber(modid = FoxsFoxTail.MODID, value = Dist.CLIENT)
 public class FoxTailClient {
 
+    // The tip adds half as much bend as the middle, while retaining its own lag.
+    static final double TIP_STRENGTH_MULTIPLIER = 0.5;
+
     private static KeyMapping openSettingsKey;
 
     @SubscribeEvent
@@ -202,9 +205,9 @@ public class FoxTailClient {
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
-        // Both segments currently receive the same target and settings.
-        middleMotion.tick(target);
-        tipMotion.tick(target);
+        // The middle follows the player; the tip follows the middle's spring output.
+        // This adds a second stage of lag instead of duplicating the same motion.
+        tipMotion.tick(middleMotion.tick(target).scale(TIP_STRENGTH_MULTIPLIER));
     }
 
     private static final class SegmentMotion {
@@ -215,7 +218,7 @@ public class FoxTailClient {
         private Vec3 previous = Vec3.ZERO;
         private Vec3 current = Vec3.ZERO;
 
-        private void tick(Vec3 target) {
+        private Vec3 tick(Vec3 target) {
             previous = current;
             // Retune without resetting motion when the settings change.
             spring.configure(
@@ -223,6 +226,7 @@ public class FoxTailClient {
                 FoxTailConfig.DAMPING.get().floatValue(),
                 FoxTailConfig.RESPONSE.get().floatValue());
             current = spring.Update(0.05f, target);
+            return current;
         }
 
         private Vec3 sample(float partialTick) {

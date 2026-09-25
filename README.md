@@ -11,7 +11,7 @@ This repository contains the **NeoForge version**, currently under development. 
 | Minecraft | 26.1.2 |
 | NeoForge development target | 26.1.2.109 |
 | Java | 25 |
-| Mod | 0.1.3 |
+| Mod | 0.1.5.alpha.2 |
 
 The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
@@ -19,11 +19,15 @@ The JAR from this project is for NeoForge. Other Minecraft versions and loaders 
 
 - A textured fox tail attached to the player's torso, supporting normal and slim player models.
 - A root, middle, and tip model hierarchy.
-- Movement-driven spring bending and a twist response to torso roll.
+- Movement-driven spring bending, stationary-turn lag, and a twist response to torso roll.
+- Separate middle and tip springs: the tip follows the middle with half-strength extra bend.
+- Leg avoidance and smooth root-angle changes for crouching, swimming, crawling, elytra flight, sleeping, and riding.
+- The tail flashes with the player when hurt.
 - Adjustable root elevation from **−90° to +90°**.
 - A custom settings screen with sliders, a player preview, Reset defaults, Save, and Cancel.
+- An optional key binding to open the settings screen, unassigned by default.
 
-Physics currently runs for the local player only. Other players can render with tails, but do not receive their own movement-driven simulation. The middle and tip currently use the same spring output; they are not independent physical segments.
+Movement-driven physics currently runs for the local player only. Other players can render with tails, but do not receive their own movement-driven simulation.
 
 ## Installation
 
@@ -35,7 +39,7 @@ The tail rendering and settings run on the client. Other players need the mod on
 
 ## Settings
 
-Open **Mods → Fox's Foxtail → Config**.
+Open **Mods → Fox's Foxtail → Config**. You can also assign **Open Tail Settings** under **Options → Controls → Key Binds → Fox's Foxtail**; no key is assigned by default.
 
 | Setting | Effect |
 | --- | --- |
@@ -64,7 +68,7 @@ bash ./gradlew build
 .\gradlew.bat build
 ```
 
-The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-0.1.3.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-0.1.5.alpha.2.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
 
 To launch the development client:
 
