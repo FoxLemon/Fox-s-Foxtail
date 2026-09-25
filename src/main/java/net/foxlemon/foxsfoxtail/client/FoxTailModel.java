@@ -34,11 +34,11 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     // Blockbench export. Extra _r1 children preserve the decorative planes' rotations.
     // addBox defines local geometry; PartPose defines its pivot relative to its parent.
 	@SuppressWarnings("unused")
-    public static LayerDefinition createBodyLayer() {
+	public static LayerDefinition createBodyLayer() {
 		MeshDefinition meshdefinition = new MeshDefinition();
 		PartDefinition partdefinition = meshdefinition.getRoot();
 
-		PartDefinition tail = partdefinition.addOrReplaceChild("tail", CubeListBuilder.create().texOffs(22, 20).addBox(-8.0F, -8.0F, -2.0F, 3.0F, 4.0F, 4.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 24.0F, 0.0F));
+		PartDefinition tail = partdefinition.addOrReplaceChild("tail", CubeListBuilder.create().texOffs(22, 20).addBox(-8.0F, -8.0F, -2.0F, 4.0F, 4.0F, 4.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 24.0F, 0.0F));
 
 		PartDefinition middle = tail.addOrReplaceChild("middle", CubeListBuilder.create().texOffs(0, 0).addBox(0.0F, -3.0F, -3.0F, 7.0F, 6.0F, 6.0F, new CubeDeformation(0.0F)), PartPose.offset(-6.0F, -6.0F, 0.0F));
 
@@ -52,7 +52,6 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
 
 		PartDefinition tailPlaneTip1_r1 = tip.addOrReplaceChild("tailPlaneTip1_r1", CubeListBuilder.create().texOffs(26, 0).addBox(-1.0F, 0.0F, -2.0F, 2.0F, 0.0F, 4.0F, new CubeDeformation(0.0F)), PartPose.offsetAndRotation(3.0F, 0.0F, 0.0F, -0.7854F, 0.0F, 0.0F));
 
-        // Texture dimensions used to interpret the UV coordinates.
 		return LayerDefinition.create(meshdefinition, 64, 64);
 	}
 

@@ -1,8 +1,10 @@
 package net.foxlemon.foxsfoxtail.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.foxlemon.foxsfoxtail.FoxsFoxTail;
 import net.foxlemon.foxsfoxtail.FoxTailConfig;
 import net.neoforged.fml.config.ModConfig;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.world.entity.player.PlayerModelType;
@@ -12,6 +14,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.ClientAvatarEntity;
@@ -29,6 +32,19 @@ import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEve
 @Mod(value = FoxsFoxTail.MODID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = FoxsFoxTail.MODID, value = Dist.CLIENT)
 public class FoxTailClient {
+
+    private static KeyMapping openSettingsKey;
+
+    @SubscribeEvent
+    public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
+        var category = new KeyMapping.Category(
+            Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "controls"));
+        event.registerCategory(category);
+        // UNKNOWN leaves the shortcut unassigned until the player chooses a key.
+        openSettingsKey = new KeyMapping("key.foxsfoxtail.open_settings",
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category);
+        event.register(openSettingsKey);
+    }
 
     // Render-data keys carry values to FoxTailModel.setupAnim(); they do not move parts themselves.
     // The vector contains angular offsets in radians: X twist, Y/Z bend, not a position.
@@ -50,21 +66,21 @@ public class FoxTailClient {
     // This initial test simulates only the local player's tail.
     private static AbstractClientPlayer trackedPlayer;
 
-    private static TailPhysics middleSpring;
-    private static TailPhysics tipSpring;
+    // Each segment owns its spring and the two snapshots used for smooth rendering.
+    private static SegmentMotion middleMotion;
+    private static SegmentMotion tipMotion;
 
-    // Keep two tick snapshots so drawing can interpolate smoothly between them.
+    // Player movement is shared input, so it is sampled only once per tick.
     private static Vec3 previousVelocity = Vec3.ZERO;
-
-    private static Vec3 previousMiddleRotation = Vec3.ZERO;
-    private static Vec3 currentMiddleRotation = Vec3.ZERO;
-    private static Vec3 previousTipRotation = Vec3.ZERO;
-    private static Vec3 currentTipRotation = Vec3.ZERO;
+    private static float previousBodyYaw;
 
     // Torso roll samples from the render layer, in radians. These are not root-angle samples.
     private static double previousBaseRoll, latestBaseRoll;
     private static boolean hasBaseRoll;
     private static int physicsTick, lastRollTick;
+    // Read the saved angle only after NeoForge has loaded the client config.
+    private static float previousRootAngle;
+    private static float currentRootAngle;
 
     public FoxTailClient(ModContainer container) {
         // Register the saved client settings before opening their editor or reading them in-game.
@@ -80,13 +96,20 @@ public class FoxTailClient {
         var minecraft = Minecraft.getInstance();
         var player = minecraft.player;
 
+        if (openSettingsKey != null) {
+            while (openSettingsKey.consumeClick()) {
+                if (player != null && minecraft.screen == null) {
+                    minecraft.setScreen(new TailSettingsScreen(null));
+                }
+            }
+        }
+
         if (player == null) {
             // Discard old motion when leaving the world.
             trackedPlayer = null;
-            middleSpring = tipSpring = null;
-            previousMiddleRotation = currentMiddleRotation = Vec3.ZERO;
-            previousTipRotation = currentTipRotation = Vec3.ZERO;
+            middleMotion = tipMotion = null;
             previousVelocity = Vec3.ZERO;
+            previousBodyYaw = 0.0F;
             hasBaseRoll = false;
             return;
         }
@@ -94,23 +117,37 @@ public class FoxTailClient {
         // Initialize again after joining a world or re-spawning.
         if (player != trackedPlayer) {
             trackedPlayer = player;
-            middleSpring = new TailPhysics(
-                FoxTailConfig.FREQUENCY.get().floatValue(),
-                FoxTailConfig.DAMPING.get().floatValue(),
-                FoxTailConfig.RESPONSE.get().floatValue(), Vec3.ZERO);
-            tipSpring = new TailPhysics(
-                FoxTailConfig.FREQUENCY.get().floatValue(),
-                FoxTailConfig.DAMPING.get().floatValue(),
-                FoxTailConfig.RESPONSE.get().floatValue(), Vec3.ZERO);
-            previousMiddleRotation = currentMiddleRotation = Vec3.ZERO;
-            previousTipRotation = currentTipRotation = Vec3.ZERO;
+            middleMotion = new SegmentMotion();
+            tipMotion = new SegmentMotion();
             previousVelocity = player.getDeltaMovement();
+            previousBodyYaw = player.yBodyRot;
             hasBaseRoll = false;
+            previousRootAngle = currentRootAngle = FoxTailConfig.TAIL_ANGLE.get().floatValue();
         }
 
         if (minecraft.isPaused()) {
+            // Ignore any camera/body rotation that happens while simulation is paused.
+            previousBodyYaw = player.yBodyRot;
             return;
         }
+        
+        float restingAngle = FoxTailConfig.TAIL_ANGLE.get().floatValue();
+        float targetAngle = restingAngle;
+
+        // Pose angle diction 
+        if (player.isSleeping()) {
+            targetAngle = TailPose.SLEEP_ANGLE;
+        } else if (player.isFallFlying() || player.isSwimming() || player.isVisuallyCrawling()) {
+            targetAngle = TailPose.SWIM_AND_ELYTRA_ANGLE;
+        } else if (player.isPassenger()) {
+            targetAngle = TailPose.SIT_ANGLE;
+        } else if (player.isCrouching()) {
+            targetAngle = TailPose.CROUCH_ANGLE;
+        }
+
+        previousRootAngle = currentRootAngle;
+        currentRootAngle = TailPose.approachAngle(currentRootAngle, targetAngle);
+        
         physicsTick++;
 
         Vec3 currentVelocity = player.getDeltaMovement();
@@ -118,8 +155,10 @@ public class FoxTailClient {
         Vec3 acceleration = currentVelocity.subtract(previousVelocity);
         previousVelocity = currentVelocity;
 
-        // Body yaw is in degrees; trigonometry uses radians.
+        // Body yaw is in degrees; trigonometry and spring targets use radians.
         double yaw = Math.toRadians(player.yBodyRot);
+        double turn = Math.toRadians(Math.IEEEremainder(player.yBodyRot - previousBodyYaw, 360.0));
+        previousBodyYaw = player.yBodyRot;
 
         // Approximate tail-local acceleration using body yaw and the layer's -90-degree Y turn.
         // This does not yet account for torso tilt or the configured root elevation.
@@ -131,6 +170,13 @@ public class FoxTailClient {
         double bendY = localZ * strength;
         double bendZ = -localY * strength;
         double twistX = 0.0;
+
+        // A stationary turn has no linear acceleration. Push the tail opposite
+        // the body's yaw change so its segments lag and then settle.
+        // Ignore abrupt teleports or rotation corrections rather than whipping the tail.
+        if (Math.abs(turn) <= Math.toRadians(90)) {
+            bendY -= turn * strength * 0.5;
+        }
         
         if (hasBaseRoll && physicsTick - lastRollTick <= 2) {
             // Use only recent rendered poses; react to the change in roll, not the held angle.
@@ -156,22 +202,32 @@ public class FoxTailClient {
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
-        // Assign the returned vectors to the stored snapshots, not helper parameters.
-        // Both springs currently receive the same target and settings.
-        previousMiddleRotation = currentMiddleRotation;
-        previousTipRotation = currentTipRotation;
-        currentMiddleRotation = physicsTick(middleSpring, target);
-        currentTipRotation = physicsTick(tipSpring, target);
+        // Both segments currently receive the same target and settings.
+        middleMotion.tick(target);
+        tipMotion.tick(target);
     }
 
-    private static Vec3 physicsTick(TailPhysics spring, Vec3 target) {
-        // Apply config changes without resetting the spring's motion.
-        spring.configure(
+    private static final class SegmentMotion {
+        private final TailPhysics spring = new TailPhysics(
             FoxTailConfig.FREQUENCY.get().floatValue(),
             FoxTailConfig.DAMPING.get().floatValue(),
-            FoxTailConfig.RESPONSE.get().floatValue());
-        // One normal 20 Hz game tick is 0.05 seconds. setupAnim only applies the result.
-        return spring.Update(0.05f, target);
+            FoxTailConfig.RESPONSE.get().floatValue(), Vec3.ZERO);
+        private Vec3 previous = Vec3.ZERO;
+        private Vec3 current = Vec3.ZERO;
+
+        private void tick(Vec3 target) {
+            previous = current;
+            // Retune without resetting motion when the settings change.
+            spring.configure(
+                FoxTailConfig.FREQUENCY.get().floatValue(),
+                FoxTailConfig.DAMPING.get().floatValue(),
+                FoxTailConfig.RESPONSE.get().floatValue());
+            current = spring.Update(0.05f, target);
+        }
+
+        private Vec3 sample(float partialTick) {
+            return previous.lerp(current, partialTick);
+        }
     }
 
     public static void disablePhysicsRecording(AvatarRenderState state) {
@@ -205,25 +261,25 @@ public class FoxTailClient {
                 // Other players receive no simulated bend; physics currently tracks only our player.
                 Vec3 middleRotation = Vec3.ZERO;
                 Vec3 tipRotation = Vec3.ZERO;
+                double rootAngle = FoxTailConfig.TAIL_ANGLE.get();
 
                 boolean localPlayer = trackedPlayer != null
                     && avatar.getUUID().equals(trackedPlayer.getUUID());
 
-                if (localPlayer) {
+                if (localPlayer && middleMotion != null && tipMotion != null) {
                     float partialTick = Minecraft.getInstance().getDeltaTracker()
                         .getGameTimeDeltaPartialTick(true);
 
-                    middleRotation = previousMiddleRotation.lerp(
-                        currentMiddleRotation, partialTick);
-
-                    tipRotation = previousTipRotation.lerp(
-                        currentTipRotation, partialTick);
+                    middleRotation = middleMotion.sample(partialTick);
+                    tipRotation = tipMotion.sample(partialTick);
+                    rootAngle = previousRootAngle
+                        + (currentRootAngle - previousRootAngle) * partialTick;
                 }
 
                 // Always write both, including zero values for other players.
                 state.setRenderData(MIDDLE_ROTATION, middleRotation);
                 state.setRenderData(TIP_ROTATION, tipRotation);
-                state.setRenderData(TAIL_ANGLE, FoxTailConfig.TAIL_ANGLE.get());
+                state.setRenderData(TAIL_ANGLE, rootAngle);
                 state.setRenderData(LOCAL_TAIL, localPlayer);
             }
         });

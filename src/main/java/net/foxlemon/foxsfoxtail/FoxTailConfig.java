@@ -19,21 +19,21 @@ public class FoxTailConfig {
     public static final ModConfigSpec.DoubleValue DAMPING = BUILDER
         .translation("foxsfoxtail.configuration.damping")
         .comment("Damping ratio: below 1 oscillates, 1 is critical damping, above 1 settles without oscillation.")
-        .defineInRange("damping", 0.5, 0.0, 2.0);
+        .defineInRange("damping", 0.25, 0.0, 2.0);
 
     public static final ModConfigSpec.DoubleValue RESPONSE = BUILDER
         .translation("foxsfoxtail.configuration.response")
         .comment("Response to target changes. Negative values anticipate; larger positive values emphasize the initial response.")
-        .defineInRange("response", -1.0, -2.0, 2.0);
+        .defineInRange("response", 1.0, -2.0, 2.0);
 
     public static final ModConfigSpec.DoubleValue MAX_BEND = BUILDER
         .translation("foxsfoxtail.configuration.maximumTargetBend")
         .comment("Maximum target bend per axis in degrees. Spring overshoot can exceed this; it is not a hard rotation limit.")
-        .defineInRange("maximumTargetBend", 30.0, 0.0, 90.0);
+        .defineInRange("maximumTargetBend", 15.0, 0.0, 90.0);
 
     public static final ModConfigSpec.DoubleValue TAIL_ANGLE = BUILDER
         .comment("Root elevation in degrees: negative lowers the tail, positive raises it.")
-        .defineInRange("tailAngle", -40.0, -90.0, 90.0);
+        .defineInRange("tailAngle", -40, -90.0, 90.0);
 
     public static final ModConfigSpec SPEC = BUILDER.build();
 }

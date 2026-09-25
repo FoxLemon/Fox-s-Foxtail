@@ -1,4 +1,6 @@
 {
+  "key.category.foxsfoxtail.controls": "Fox's Foxtail",
+  "key.foxsfoxtail.open_settings": "Open Tail Settings",
   "foxsfoxtail.configuration.title": "Foxtail Physics Settings",
   "foxsfoxtail.configuration.movementStrength": "Movement strength",
   "foxsfoxtail.configuration.frequency": "Spring frequency (Hz)",
