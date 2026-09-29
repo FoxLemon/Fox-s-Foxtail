@@ -21,6 +21,11 @@ public class FoxTailConfig {
         .comment("Damping ratio: below 1 oscillates, 1 is critical damping, above 1 settles without oscillation.")
         .defineInRange("damping", 0.25, 0.0, 2.0);
 
+    public static final ModConfigSpec.DoubleValue SOFT_LIMIT_DAMPING_MULTIPLIER = BUILDER
+        .translation("foxsfoxtail.configuration.softLimitDampingMultiplier")
+        .comment("Multiplies damping for all segment bends beyond its soft limit. 1 keeps the normal damping.")
+        .defineInRange("softLimitDampingMultiplier", 3.0, 0.0, 3.0);
+
     public static final ModConfigSpec.DoubleValue RESPONSE = BUILDER
         .translation("foxsfoxtail.configuration.response")
         .comment("Response to target changes. Negative values anticipate; larger positive values emphasize the initial response.")

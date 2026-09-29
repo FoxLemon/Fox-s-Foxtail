@@ -8,6 +8,7 @@ public class TailPhysics {
     // Beyond the soft limit, each additional 10 degrees increases resistance exponentially.
     private static final double SOFT_LIMIT_WIDTH = Math.toRadians(10);
     private double bendLimit = Double.POSITIVE_INFINITY;
+    private double softLimitDampingMultiplier = 1.0;
     private Vec3 xp;
     private Vec3 y, yd;
     private float k1, k2, k3;
@@ -45,6 +46,13 @@ public class TailPhysics {
         bendLimit = radians;
     }
 
+    public void setSoftLimitDampingMultiplier(double multiplier) {
+        if (!Double.isFinite(multiplier) || multiplier < 0) {
+            throw new IllegalArgumentException("Soft-limit damping multiplier must be nonnegative and finite");
+        }
+        softLimitDampingMultiplier = multiplier;
+    }
+
     public Vec3 Update(float T, Vec3 x, Vec3 xd) {
 
         if (!Float.isFinite(T) || T <= 0) {
@@ -75,6 +83,15 @@ public class TailPhysics {
         double denominator = k2 + step * k1 + step * step;
         double freeAngle = (angle * (k2 + step * k1)
             + step * k2 * velocity + step * step * drive) / denominator;
+        if (Math.abs(freeAngle) > bendLimit && softLimitDampingMultiplier != 1.0) {
+            // Ease in extra damping past the limit; below it, use the normal setting.
+            double excess = Math.abs(freeAngle) - bendLimit;
+            double activation = -Math.expm1(-excess / SOFT_LIMIT_WIDTH);
+            double damping = k1 * (1 + (softLimitDampingMultiplier - 1) * activation);
+            denominator = k2 + step * damping + step * step;
+            freeAngle = (angle * (k2 + step * damping)
+                + step * k2 * velocity + step * step * drive) / denominator;
+        }
         double magnitude = Math.abs(freeAngle);
         if (magnitude <= bendLimit) {
             return freeAngle;

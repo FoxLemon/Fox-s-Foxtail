@@ -228,6 +228,7 @@ public class FoxTailClient {
                 FoxTailConfig.DAMPING.get().floatValue(),
                 FoxTailConfig.RESPONSE.get().floatValue());
             spring.setBendLimit(Math.toRadians(FoxTailConfig.MAX_BEND.get()));
+            spring.setSoftLimitDampingMultiplier(FoxTailConfig.SOFT_LIMIT_DAMPING_MULTIPLIER.get());
             current = spring.Update(0.05f, target);
             return current;
         }
