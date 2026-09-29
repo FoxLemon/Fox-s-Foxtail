@@ -39,8 +39,8 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         // Save transforms so the tail's positioning does not affect other layers.
         poseStack.pushPose();
         var playerModel = getParentModel();
-        playerModel.setupAnim(renderState);
 
+        // Minecraft has already posed the parent model before submitting its layers.
         Vec3 avoidance = TailPose.legAvoidance(playerModel.leftLeg.xRot, playerModel.rightLeg.xRot, 1.0F);
 
         renderState.setRenderData(FoxTailClient.TAIL_AVOIDANCE, avoidance);
