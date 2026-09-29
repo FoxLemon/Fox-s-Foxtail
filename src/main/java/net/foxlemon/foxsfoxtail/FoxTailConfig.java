@@ -23,7 +23,7 @@ public class FoxTailConfig {
 
     public static final ModConfigSpec.DoubleValue SOFT_LIMIT_DAMPING_MULTIPLIER = BUILDER
         .translation("foxsfoxtail.configuration.softLimitDampingMultiplier")
-        .comment("Multiplies damping for all segment bends beyond its soft limit. 1 keeps the normal damping.")
+        .comment("Exponent for extra damping past the soft bend limit on every segment: damping grows by e^(power * excess / 10 degrees) while bending outward. 0 disables the extra damping.")
         .defineInRange("softLimitDampingMultiplier", 3.0, 0.0, 3.0);
 
     public static final ModConfigSpec.DoubleValue RESPONSE = BUILDER

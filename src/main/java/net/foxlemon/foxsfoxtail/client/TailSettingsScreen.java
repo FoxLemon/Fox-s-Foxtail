@@ -33,7 +33,7 @@ public final class TailSettingsScreen extends Screen {
         "Movement strength", 
         "Frequency (Hz)", 
         "Damping", 
-        "Soft-limit damping",
+        "Limit damping power",
         "Response", 
         "Soft bend limit (degrees)", 
         "Root angle (degrees)"

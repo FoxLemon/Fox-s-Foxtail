@@ -8,6 +8,7 @@ public class TailPhysics {
     // Beyond the soft limit, each additional 10 degrees increases resistance exponentially.
     private static final double SOFT_LIMIT_WIDTH = Math.toRadians(10);
     private double bendLimit = Double.POSITIVE_INFINITY;
+    // This value controls the exponent of damping beyond the soft bend limit.
     private double softLimitDampingMultiplier = 1.0;
     private Vec3 xp;
     private Vec3 y, yd;
@@ -83,11 +84,13 @@ public class TailPhysics {
         double denominator = k2 + step * k1 + step * step;
         double freeAngle = (angle * (k2 + step * k1)
             + step * k2 * velocity + step * step * drive) / denominator;
-        if (Math.abs(freeAngle) > bendLimit && softLimitDampingMultiplier != 1.0) {
-            // Ease in extra damping past the limit; below it, use the normal setting.
+        if (Math.abs(freeAngle) > bendLimit && Math.abs(freeAngle) > Math.abs(angle)
+                && softLimitDampingMultiplier > 0 && k1 > 0) {
+            // Resist further outward motion by e^(power * excess / 10 degrees).
+            // Returning toward the limit keeps normal damping so the tail cannot get stuck.
             double excess = Math.abs(freeAngle) - bendLimit;
-            double activation = -Math.expm1(-excess / SOFT_LIMIT_WIDTH);
-            double damping = k1 * (1 + (softLimitDampingMultiplier - 1) * activation);
+            double exponent = Math.min(40, softLimitDampingMultiplier * excess / SOFT_LIMIT_WIDTH);
+            double damping = k1 * Math.exp(exponent);
             denominator = k2 + step * damping + step * step;
             freeAngle = (angle * (k2 + step * damping)
                 + step * k2 * velocity + step * step * drive) / denominator;

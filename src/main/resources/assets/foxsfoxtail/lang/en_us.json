@@ -5,7 +5,7 @@
   "foxsfoxtail.configuration.movementStrength": "Movement strength",
   "foxsfoxtail.configuration.frequency": "Spring frequency (Hz)",
   "foxsfoxtail.configuration.damping": "Damping ratio",
-  "foxsfoxtail.configuration.softLimitDampingMultiplier": "Soft-limit damping multiplier",
+  "foxsfoxtail.configuration.softLimitDampingMultiplier": "Soft-limit damping power",
   "foxsfoxtail.configuration.response": "Response",
   "foxsfoxtail.configuration.maximumTargetBend": "Soft bend limit (degrees)"
 }
