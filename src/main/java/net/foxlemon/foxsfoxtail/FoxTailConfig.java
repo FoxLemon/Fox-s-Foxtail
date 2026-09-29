@@ -28,7 +28,7 @@ public class FoxTailConfig {
 
     public static final ModConfigSpec.DoubleValue MAX_BEND = BUILDER
         .translation("foxsfoxtail.configuration.maximumTargetBend")
-        .comment("Maximum target bend per axis in degrees. Spring overshoot can exceed this; it is not a hard rotation limit.")
+        .comment("Soft bend limit per segment and axis in degrees. Extra restoring force grows exponentially beyond this angle; it is not a hard cap.")
         .defineInRange("maximumTargetBend", 15.0, 0.0, 90.0);
 
     public static final ModConfigSpec.DoubleValue TAIL_ANGLE = BUILDER

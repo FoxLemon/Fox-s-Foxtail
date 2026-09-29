@@ -4,6 +4,10 @@ import net.minecraft.world.phys.Vec3;
 
 public class TailPhysics {
 
+    private static final int SUBSTEPS = 4;
+    // Beyond the soft limit, each additional 10 degrees increases resistance exponentially.
+    private static final double SOFT_LIMIT_WIDTH = Math.toRadians(10);
+    private double bendLimit = Double.POSITIVE_INFINITY;
     private Vec3 xp;
     private Vec3 y, yd;
     private float k1, k2, k3;
@@ -33,6 +37,14 @@ public class TailPhysics {
         return Update(T, x, null);
     }
 
+    // The limit is a local angular offset per axis, in radians, not root elevation.
+    public void setBendLimit(double radians) {
+        if (!Double.isFinite(radians) || radians < 0) {
+            throw new IllegalArgumentException("Bend limit must be nonnegative and finite");
+        }
+        bendLimit = radians;
+    }
+
     public Vec3 Update(float T, Vec3 x, Vec3 xd) {
 
         if (!Float.isFinite(T) || T <= 0) {
@@ -44,16 +56,45 @@ public class TailPhysics {
         }
         xp = x;
 
-        float k2_stable = Math.max(k2, 1.1f * (T*T/4 + T*k1/2));
-        y = y.add(yd.scale(T));
-        yd = yd.add(
-            x.add(xd.scale(k3))
-            .subtract(y)
-            .subtract(yd.scale(k1))
-            .scale(T / k2_stable)
-        );
+        Vec3 drive = x.add(xd.scale(k3));
+        double step = T / (double) SUBSTEPS;
+        for (int i = 0; i < SUBSTEPS; i++) {
+            Vec3 next = new Vec3(
+                stepAxis(y.x, yd.x, drive.x, step),
+                stepAxis(y.y, yd.y, drive.y, step),
+                stepAxis(y.z, yd.z, drive.z, step));
+            yd = next.subtract(y).scale(1.0 / step);
+            y = next;
+        }
 
         return y;
     }
-    
+
+    private double stepAxis(double angle, double velocity, double drive, double step) {
+        // Implicit integration stays stable even when the exponential force becomes steep.
+        double denominator = k2 + step * k1 + step * step;
+        double freeAngle = (angle * (k2 + step * k1)
+            + step * k2 * velocity + step * step * drive) / denominator;
+        double magnitude = Math.abs(freeAngle);
+        if (magnitude <= bendLimit) {
+            return freeAngle;
+        }
+
+        double weight = step * step / denominator;
+        double lower = bendLimit;
+        double upper = magnitude;
+        // Solve the additional restoring force rather than snapping to an angle boundary.
+        for (int i = 0; i < 40; i++) {
+            double candidate = lower + (upper - lower) * 0.5;
+            double excess = candidate - bendLimit;
+            // Subtract the linear term so the extra force starts smoothly at the limit.
+            double resistance = SOFT_LIMIT_WIDTH * Math.expm1(excess / SOFT_LIMIT_WIDTH) - excess;
+            if (candidate + weight * resistance > magnitude) {
+                upper = candidate;
+            } else {
+                lower = candidate;
+            }
+        }
+        return Math.copySign(lower + (upper - lower) * 0.5, freeAngle);
+    }
 }

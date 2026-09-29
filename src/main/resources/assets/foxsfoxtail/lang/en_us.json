@@ -6,5 +6,5 @@
   "foxsfoxtail.configuration.frequency": "Spring frequency (Hz)",
   "foxsfoxtail.configuration.damping": "Damping ratio",
   "foxsfoxtail.configuration.response": "Response",
-  "foxsfoxtail.configuration.maximumTargetBend": "Maximum target bend (degrees)"
+  "foxsfoxtail.configuration.maximumTargetBend": "Soft bend limit (degrees)"
 }

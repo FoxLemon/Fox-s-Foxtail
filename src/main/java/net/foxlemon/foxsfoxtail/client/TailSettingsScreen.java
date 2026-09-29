@@ -22,8 +22,14 @@ public final class TailSettingsScreen extends Screen {
         FoxTailConfig.TAIL_ANGLE
     };
 
-    private final String[] labels = {"Movement strength", "Frequency (Hz)",
-        "Damping", "Response", "Maximum target bend", "Root angle (degrees)"};
+    private final String[] labels = {
+        "Movement strength", 
+        "Frequency (Hz)", 
+        "Damping", 
+        "Response", 
+        "Soft bend limit (degrees)", 
+        "Root angle (degrees)"
+    };
         
     private final double[] minimum = {0, 0.1, 0, -2, 0, -90};
     private final double[] maximum = {10, 10, 2, 2, 90, 90};
@@ -68,10 +74,11 @@ public final class TailSettingsScreen extends Screen {
         double limit = Math.toRadians(draft[4]);
         middlePreviewSpring.configure((float) draft[1], (float) draft[2], (float) draft[3]);
         tipPreviewSpring.configure((float) draft[1], (float) draft[2], (float) draft[3]);
+        middlePreviewSpring.setBendLimit(limit);
+        tipPreviewSpring.setBendLimit(limit);
         previousMiddlePreview = middlePreview;
         previousTipPreview = tipPreview;
-        middlePreview = middlePreviewSpring.Update(0.05f,
-            new Vec3(0, 0, Math.min(limit, force)));
+        middlePreview = middlePreviewSpring.Update(0.05f, new Vec3(0, 0, force));
         tipPreview = tipPreviewSpring.Update(0.05f,
             middlePreview.scale(FoxTailClient.TIP_STRENGTH_MULTIPLIER));
     }

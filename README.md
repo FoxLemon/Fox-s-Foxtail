@@ -47,7 +47,7 @@ Open **Mods → Fox's Foxtail → Config**. You can also assign **Open Tail Sett
 | Frequency | How quickly the spring responds; higher values feel stiffer. |
 | Damping | How much the spring's oscillation is reduced. |
 | Response | How the spring reacts initially to changes in its target. |
-| Maximum target bend | Limits the target angle per axis; spring overshoot can exceed it. |
+| Soft bend limit | Extra restoring force grows exponentially beyond this angle, per segment and axis. This is a soft limit, so stronger motion can still bend farther. |
 | Root angle | Raises or lowers the whole tail. The middle and tip inherit this angle. |
 
 The preview uses a repeating test impulse to demonstrate the draft settings. Join a world to see the player preview. **Save** applies and stores changes; **Cancel** or Escape discards them. **Reset defaults** resets the draft, which must still be saved.

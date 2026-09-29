@@ -195,13 +195,7 @@ public class FoxTailClient {
             hasBaseRoll = false;
         }
 
-        // Config stores degrees; the model and physics use radians.
-        double maxBend = Math.toRadians(FoxTailConfig.MAX_BEND.get());
-        // Clamp the target only; the spring's resulting rotation can still overshoot it.
-        bendY = Math.max(-maxBend, Math.min(maxBend, bendY));
-        bendZ = Math.max(-maxBend, Math.min(maxBend, bendZ));
-        twistX = Math.max(-maxBend, Math.min(maxBend, twistX));
-
+        // Keep the driving motion: the spring now resists bending beyond its soft limit.
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
@@ -225,6 +219,7 @@ public class FoxTailClient {
                 FoxTailConfig.FREQUENCY.get().floatValue(),
                 FoxTailConfig.DAMPING.get().floatValue(),
                 FoxTailConfig.RESPONSE.get().floatValue());
+            spring.setBendLimit(Math.toRadians(FoxTailConfig.MAX_BEND.get()));
             current = spring.Update(0.05f, target);
             return current;
         }
