@@ -34,8 +34,10 @@ public final class TailSettingsScreen extends Screen {
     private final double[] minimum = {0, 0.1, 0, -2, 0, -90};
     private final double[] maximum = {10, 10, 2, 2, 90, 90};
     private final double[] draft = new double[6];
+    private final TailPhysics rootPreviewSpring = new TailPhysics(1, 0.5f, 0, Vec3.ZERO);
     private final TailPhysics middlePreviewSpring = new TailPhysics(1, 0.5f, 0, Vec3.ZERO);
     private final TailPhysics tipPreviewSpring = new TailPhysics(1, 0.5f, 0, Vec3.ZERO);
+    private Vec3 previousRootPreview = Vec3.ZERO, rootPreview = Vec3.ZERO;
     private Vec3 previousMiddlePreview = Vec3.ZERO, middlePreview = Vec3.ZERO;
     private Vec3 previousTipPreview = Vec3.ZERO, tipPreview = Vec3.ZERO;
     private int previewTicks;
@@ -72,12 +74,17 @@ public final class TailSettingsScreen extends Screen {
         previewTicks++;
         double force = previewTicks % 60 < 10 ? 0.04 * draft[0] : 0;
         double limit = Math.toRadians(draft[4]);
+        rootPreviewSpring.configure((float) draft[1], (float) draft[2], (float) draft[3]);
         middlePreviewSpring.configure((float) draft[1], (float) draft[2], (float) draft[3]);
         tipPreviewSpring.configure((float) draft[1], (float) draft[2], (float) draft[3]);
+        rootPreviewSpring.setBendLimit(limit);
         middlePreviewSpring.setBendLimit(limit);
         tipPreviewSpring.setBendLimit(limit);
+        previousRootPreview = rootPreview;
         previousMiddlePreview = middlePreview;
         previousTipPreview = tipPreview;
+        rootPreview = rootPreviewSpring.Update(0.05f,
+            new Vec3(0, 0, force * FoxTailClient.ROOT_STRENGTH_MULTIPLIER));
         middlePreview = middlePreviewSpring.Update(0.05f, new Vec3(0, 0, force));
         tipPreview = tipPreviewSpring.Update(0.05f,
             middlePreview.scale(FoxTailClient.TIP_STRENGTH_MULTIPLIER));
@@ -98,6 +105,8 @@ public final class TailSettingsScreen extends Screen {
             state.xRot = 0;
             state.setRenderData(FoxTailClient.TAIL_ANGLE, draft[5]);
             float fraction = Math.max(0, Math.min(1, partialTick));
+            state.setRenderData(FoxTailClient.ROOT_ROTATION,
+                previousRootPreview.lerp(rootPreview, fraction));
             state.setRenderData(FoxTailClient.MIDDLE_ROTATION,
                 previousMiddlePreview.lerp(middlePreview, fraction));
             state.setRenderData(FoxTailClient.TIP_ROTATION,

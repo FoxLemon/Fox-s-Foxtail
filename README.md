@@ -20,7 +20,7 @@ The JAR from this project is for NeoForge. Other Minecraft versions and loaders 
 - A textured fox tail attached to the player's torso, supporting normal and slim player models.
 - A root, middle, and tip model hierarchy.
 - Movement-driven spring bending, stationary-turn lag, and a twist response to torso roll.
-- Separate middle and tip springs: the tip follows the middle with half-strength extra bend.
+- Separate root, middle, and tip springs: the root moves at 25% strength, while the tip follows the middle with half-strength extra bend.
 - Leg avoidance and smooth root-angle changes for crouching, swimming, crawling, elytra flight, sleeping, and riding.
 - The tail flashes with the player when hurt.
 - Adjustable root elevation from **−90° to +90°**.

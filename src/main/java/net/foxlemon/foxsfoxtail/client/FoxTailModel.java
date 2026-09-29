@@ -79,17 +79,19 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     }
 
     private void setupAvoidance(AvatarRenderState state) {
-        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0));
+        Vec3 rootRotation = state.getRenderDataOrDefault(FoxTailClient.ROOT_ROTATION, Vec3.ZERO);
+        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0))
+            + (float) rootRotation.z;
 
         Vec3 avoidance = state.getRenderDataOrDefault(FoxTailClient.TAIL_AVOIDANCE, Vec3.ZERO);
-        float twist = (float) Math.toRadians(avoidance.x);
-        float sway = (float) Math.toRadians(avoidance.y);
+        float twist = (float) Math.toRadians(avoidance.x) + (float) rootRotation.x;
+        float sway = (float) Math.toRadians(avoidance.y) + (float) rootRotation.y;
 
         tail.zRot += angle;
         tail.yRot += sway;
         tail.xRot += twist;
 
-        // Keep the attachment fixed while rotating around both axes.
+        // Include spring rotation in the compensation so the root stays attached.
         // ModelPart applies Y rotation before Z rotation.
         float cosAngle = (float) Math.cos(angle);
         float sinAngle = (float) Math.sin(angle);

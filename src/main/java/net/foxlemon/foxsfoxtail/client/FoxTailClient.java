@@ -33,6 +33,8 @@ import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEve
 @EventBusSubscriber(modid = FoxsFoxTail.MODID, value = Dist.CLIENT)
 public class FoxTailClient {
 
+    // The base should move less than the flexible middle and tip.
+    static final double ROOT_STRENGTH_MULTIPLIER = 0.08;
     // The tip adds half as much bend as the middle, while retaining its own lag.
     static final double TIP_STRENGTH_MULTIPLIER = 0.5;
 
@@ -51,6 +53,9 @@ public class FoxTailClient {
 
     // Render-data keys carry values to FoxTailModel.setupAnim(); they do not move parts themselves.
     // The vector contains angular offsets in radians: X twist, Y/Z bend, not a position.
+    public static final ContextKey<Vec3> ROOT_ROTATION =
+        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "root_rotation"));
+
     public static final ContextKey<Vec3> MIDDLE_ROTATION =
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "middle_rotation"));
 
@@ -70,6 +75,7 @@ public class FoxTailClient {
     private static AbstractClientPlayer trackedPlayer;
 
     // Each segment owns its spring and the two snapshots used for smooth rendering.
+    private static SegmentMotion rootMotion;
     private static SegmentMotion middleMotion;
     private static SegmentMotion tipMotion;
 
@@ -110,7 +116,7 @@ public class FoxTailClient {
         if (player == null) {
             // Discard old motion when leaving the world.
             trackedPlayer = null;
-            middleMotion = tipMotion = null;
+            rootMotion = middleMotion = tipMotion = null;
             previousVelocity = Vec3.ZERO;
             previousBodyYaw = 0.0F;
             hasBaseRoll = false;
@@ -120,6 +126,7 @@ public class FoxTailClient {
         // Initialize again after joining a world or re-spawning.
         if (player != trackedPlayer) {
             trackedPlayer = player;
+            rootMotion = new SegmentMotion();
             middleMotion = new SegmentMotion();
             tipMotion = new SegmentMotion();
             previousVelocity = player.getDeltaMovement();
@@ -199,8 +206,9 @@ public class FoxTailClient {
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
-        // The middle follows the player; the tip follows the middle's spring output.
-        // This adds a second stage of lag instead of duplicating the same motion.
+        // The root moves a little without changing the middle's existing response.
+        rootMotion.tick(target.scale(ROOT_STRENGTH_MULTIPLIER));
+        // The tip follows the middle's output, adding another stage of lag.
         tipMotion.tick(middleMotion.tick(target).scale(TIP_STRENGTH_MULTIPLIER));
     }
 
@@ -258,6 +266,7 @@ public class FoxTailClient {
             public <T extends Avatar & ClientAvatarEntity> void accept(T avatar, AvatarRenderState state) {
 
                 // Other players receive no simulated bend; physics currently tracks only our player.
+                Vec3 rootRotation = Vec3.ZERO;
                 Vec3 middleRotation = Vec3.ZERO;
                 Vec3 tipRotation = Vec3.ZERO;
                 double rootAngle = FoxTailConfig.TAIL_ANGLE.get();
@@ -265,17 +274,19 @@ public class FoxTailClient {
                 boolean localPlayer = trackedPlayer != null
                     && avatar.getUUID().equals(trackedPlayer.getUUID());
 
-                if (localPlayer && middleMotion != null && tipMotion != null) {
+                if (localPlayer && rootMotion != null && middleMotion != null && tipMotion != null) {
                     float partialTick = Minecraft.getInstance().getDeltaTracker()
                         .getGameTimeDeltaPartialTick(true);
 
+                    rootRotation = rootMotion.sample(partialTick);
                     middleRotation = middleMotion.sample(partialTick);
                     tipRotation = tipMotion.sample(partialTick);
                     rootAngle = previousRootAngle
                         + (currentRootAngle - previousRootAngle) * partialTick;
                 }
 
-                // Always write both, including zero values for other players.
+                // Always write all segment rotations; render states can be reused.
+                state.setRenderData(ROOT_ROTATION, rootRotation);
                 state.setRenderData(MIDDLE_ROTATION, middleRotation);
                 state.setRenderData(TIP_ROTATION, tipRotation);
                 state.setRenderData(TAIL_ANGLE, rootAngle);
