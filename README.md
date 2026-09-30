@@ -11,7 +11,7 @@ This repository contains the **NeoForge version**, currently under development. 
 | Minecraft | 26.1.2 |
 | NeoForge development target | 26.1.2.109 |
 | Java | 25 |
-| Mod | mc26.1.2-beta.2 |
+| Mod | mc26.1.2-beta.4 |
 
 The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
@@ -27,6 +27,7 @@ The JAR from this project is for NeoForge. Other Minecraft versions and loaders 
 - Separate springs for the root, middle, and tip. Player movement, stationary turns, and torso roll drive the tail; the tip follows the middle with its own delayed, half-strength bend.
 - The root uses 8% of the movement-driven bend so the base stays relatively steady. When the tail touches blocks, the middle and tip also pull the root away from the obstacle.
 - Invisible inner collision boxes let some outer fur overlap blocks. Contact with block collision shapes bends the tail away without changing the player's movement or block physics.
+- Collision checks use the actual rotated guide boxes. Iris shadow renders are excluded from physics sampling to prevent false ground contact with shaders enabled.
 - A configurable soft bend limit adds exponentially stronger resistance and damping past the chosen angle while still allowing stronger forces to bend farther.
 
 ### Controls
@@ -77,7 +78,7 @@ bash ./gradlew build
 .\gradlew.bat build
 ```
 
-The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.2.jar`. Change `mod_version` in `gradle.properties` when preparing a new version. The internal version is `26.1.2-beta.2`: NeoForge requires it to start with a number. The build adds `mc` to the JAR filename, and release tags can use that same prefix.
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.4.jar`. Change `mod_version` in `gradle.properties` when preparing a new version. The internal version is `26.1.2-beta.4`: NeoForge requires it to start with a number. The build adds `mc` to the JAR filename, and release tags can use that same prefix.
 
 To launch the development client:
 

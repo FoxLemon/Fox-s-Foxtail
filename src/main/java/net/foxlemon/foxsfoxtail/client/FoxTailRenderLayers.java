@@ -36,7 +36,9 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         }
 
         var minecraft = Minecraft.getInstance();
-        boolean sampleBlocks = minecraft.level != null && minecraft.player != null
+        boolean shadowPass = TailShaderCompat.isShadowPass();
+        // Shadow renders may use different transforms and must not feed the simulation.
+        boolean sampleBlocks = !shadowPass && minecraft.level != null && minecraft.player != null
             && FoxTailClient.shouldSampleBlockCollision(renderState);
         // Undo the renderer's final -1.501 model offset when converting probes to world positions.
         Vector3f entityOrigin = sampleBlocks
@@ -52,7 +54,9 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
         renderState.setRenderData(FoxTailClient.TAIL_AVOIDANCE, avoidance);
 
         // Supply torso roll in radians for the next physics tick.
-        FoxTailClient.recordBaseRoll(renderState, playerModel.body.zRot);
+        if (!shadowPass) {
+            FoxTailClient.recordBaseRoll(renderState, playerModel.body.zRot);
+        }
 
         // Follow both overall model motion and the torso's local pose, in that order.
         playerModel.root().translateAndRotate(poseStack);
