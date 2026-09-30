@@ -12,9 +12,6 @@ import org.joml.Vector3f;
 
 // Visual-only block contact. Model packs provide the inner collision guides.
 final class TailBlockCollision {
-    // Probe a pixel beyond the inner collision cubes so the spring can start
-    // turning before the visible fur passes deeply into a wall.
-    private static final double CONTACT_MARGIN = 1.0;
     private static final double MAX_PUSH = 0.25;
     private static final double MAX_BEND = Math.toRadians(35);
 
@@ -49,17 +46,15 @@ final class TailBlockCollision {
 
     private static Vec3 bendForBox(Matrix4f transform, AABB localBox, AvatarRenderState state,
                                    ClientLevel level, AbstractClientPlayer player, Vector3f entityOrigin) {
-        // The tail runs along local X. Expand only its cross-section; extending
-        // the ends would make the base react to blocks behind the player.
-        AABB worldBox = worldBox(transform, localBox.inflate(0, CONTACT_MARGIN, CONTACT_MARGIN),
-            state, entityOrigin);
+        // The enclosing AABB only finds nearby blocks. Test the actual rotated
+        // guide as well, without enlarging the collision volume from Blockbench.
+        AABB worldBox = worldBox(transform, localBox, state, entityOrigin);
+        OrientedBox guide = orientedBox(transform, localBox, state, entityOrigin);
         Vec3 push = Vec3.ZERO;
         // Minecraft supplies world-space shapes, including slabs, fences, and modded block shapes.
         for (VoxelShape shape : level.getBlockCollisions(player, worldBox)) {
             for (AABB blockBox : shape.toAabbs()) {
-                if (worldBox.intersects(blockBox)) {
-                    push = push.add(shortestPush(worldBox, blockBox));
-                }
+                push = push.add(guide.pushFrom(blockBox));
             }
         }
         if (push.lengthSqr() == 0) return Vec3.ZERO;
@@ -76,8 +71,8 @@ final class TailBlockCollision {
         if (torque.lengthSqr() < lever.lengthSqr() * push.lengthSqr() * 0.02) {
             // A block directly behind the tail pushes along its length. That cannot rotate
             // a joint, so curl toward the clearer vertical side instead.
-            double direction = level.noBlockCollision(player, worldBox.move(0, 0.125, 0))
-                || !level.noBlockCollision(player, worldBox.move(0, -0.125, 0)) ? 1 : -1;
+            double direction = clearAt(guide, worldBox, 0.125, level, player)
+                || !clearAt(guide, worldBox, -0.125, level, player) ? 1 : -1;
             Vec3 perpendicular = new Vec3(0, direction, 0);
             Vec3 along = lever.normalize();
             perpendicular = perpendicular.subtract(along.scale(perpendicular.dot(along))).normalize();
@@ -126,21 +121,69 @@ final class TailBlockCollision {
             state.z + point.z - entityOrigin.z);
     }
 
-    private static Vec3 shortestPush(AABB tail, AABB block) {
-        double[] distances = {
-            block.minX - tail.maxX, block.maxX - tail.minX,
-            block.minY - tail.maxY, block.maxY - tail.minY,
-            block.minZ - tail.maxZ, block.maxZ - tail.minZ
+    private static OrientedBox orientedBox(Matrix4f transform, AABB box,
+                                           AvatarRenderState state, Vector3f origin) {
+        Vec3 center = worldPoint(transform, (box.minX + box.maxX) / 32,
+            (box.minY + box.maxY) / 32, (box.minZ + box.maxZ) / 32, state, origin);
+        Vec3 pivot = worldPoint(transform, 0, 0, 0, state, origin);
+        Vec3[] edges = {
+            worldPoint(transform, 1, 0, 0, state, origin).subtract(pivot),
+            worldPoint(transform, 0, 1, 0, state, origin).subtract(pivot),
+            worldPoint(transform, 0, 0, 1, state, origin).subtract(pivot)
         };
-        int best = 0;
-        for (int i = 1; i < distances.length; i++) {
-            if (Math.abs(distances[i]) < Math.abs(distances[best])) best = i;
+        double[] halfSizes = {(box.maxX - box.minX) / 32,
+            (box.maxY - box.minY) / 32, (box.maxZ - box.minZ) / 32};
+        for (int i = 0; i < 3; i++) {
+            halfSizes[i] *= edges[i].length();
+            edges[i] = edges[i].normalize();
         }
-        return switch (best) {
-            case 0, 1 -> new Vec3(distances[best], 0, 0);
-            case 2, 3 -> new Vec3(0, distances[best], 0);
-            default -> new Vec3(0, 0, distances[best]);
-        };
+        return new OrientedBox(center, edges, halfSizes);
+    }
+
+    private static boolean clearAt(OrientedBox guide, AABB bounds, double y,
+                                   ClientLevel level, AbstractClientPlayer player) {
+        OrientedBox moved = new OrientedBox(guide.center.add(0, y, 0), guide.axes, guide.halfSizes);
+        for (VoxelShape shape : level.getBlockCollisions(player, bounds.move(0, y, 0))) {
+            for (AABB block : shape.toAabbs()) {
+                if (moved.pushFrom(block).lengthSqr() > 0) return false;
+            }
+        }
+        return true;
+    }
+
+    // Separating-axis testing rejects empty corners of the enclosing AABB.
+    // The smallest overlap gives a push out of the solid block's collision box.
+    record OrientedBox(Vec3 center, Vec3[] axes, double[] halfSizes) {
+        Vec3 pushFrom(AABB block) {
+            Vec3[] worldAxes = {new Vec3(1, 0, 0), new Vec3(0, 1, 0), new Vec3(0, 0, 1)};
+            Vec3[] candidates = new Vec3[15];
+            for (int i = 0; i < 3; i++) {
+                candidates[i] = axes[i];
+                candidates[3 + i] = worldAxes[i];
+                for (int j = 0; j < 3; j++) candidates[6 + i * 3 + j] = axes[i].cross(worldAxes[j]);
+            }
+            Vec3 delta = center.subtract(new Vec3((block.minX + block.maxX) / 2,
+                (block.minY + block.maxY) / 2, (block.minZ + block.maxZ) / 2));
+            double depth = Double.POSITIVE_INFINITY;
+            Vec3 direction = Vec3.ZERO;
+            for (Vec3 candidate : candidates) {
+                if (candidate.lengthSqr() < 1.0e-12) continue;
+                Vec3 axis = candidate.normalize();
+                double radius = 0;
+                for (int i = 0; i < 3; i++) radius += halfSizes[i] * Math.abs(axes[i].dot(axis));
+                double blockRadius = (block.maxX - block.minX) / 2 * Math.abs(axis.x)
+                    + (block.maxY - block.minY) / 2 * Math.abs(axis.y)
+                    + (block.maxZ - block.minZ) / 2 * Math.abs(axis.z);
+                double distance = delta.dot(axis);
+                double overlap = radius + blockRadius - Math.abs(distance);
+                if (overlap <= 1.0e-7) return Vec3.ZERO;
+                if (overlap < depth) {
+                    depth = overlap;
+                    direction = axis.scale(distance < 0 ? -1 : 1);
+                }
+            }
+            return direction.scale(depth);
+        }
     }
 
     private static double clamp(double angle) {
