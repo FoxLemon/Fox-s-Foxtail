@@ -14,7 +14,7 @@ public class TailPose {
     public static final float SWIM_AND_ELYTRA_ANGLE = -60;
     public static final float SIT_ANGLE = 0;
     public static final float SIT_WITH_OBSTRUCTION_ANGLE = 60;
-    public static final float SLEEP_ANGLE = -100;
+    public static final float SLEEP_ANGLE = -120;
 
     private TailPose() {}
 

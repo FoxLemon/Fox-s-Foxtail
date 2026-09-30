@@ -165,7 +165,8 @@ public class FoxTailClient {
         } else if (player.isFallFlying() || player.isSwimming() || player.isVisuallyCrawling()) {
             targetAngle = TailPose.SWIM_AND_ELYTRA_ANGLE;
         } else if (player.isPassenger()) {
-            targetAngle = TailPose.SIT_ANGLE;
+            // Raise low resting angles for sitting, but preserve an already higher angle.
+            targetAngle = Math.max(restingAngle, TailPose.SIT_ANGLE);
         } else if (player.isCrouching()) {
             targetAngle = TailPose.CROUCH_ANGLE;
         }
