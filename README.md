@@ -11,7 +11,7 @@ This repository contains the **NeoForge version**, currently under development. 
 | Minecraft | 26.1.2 |
 | NeoForge development target | 26.1.2.109 |
 | Java | 25 |
-| Mod | mc26.1.2-beta.1 |
+| Mod | mc26.1.2-beta.2 |
 
 The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
@@ -77,7 +77,7 @@ bash ./gradlew build
 .\gradlew.bat build
 ```
 
-The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.1.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.2.jar`. Change `mod_version` in `gradle.properties` when preparing a new version. The internal version is `26.1.2-beta.2`: NeoForge requires it to start with a number. The build adds `mc` to the JAR filename, and release tags can use that same prefix.
 
 To launch the development client:
 
@@ -90,12 +90,21 @@ On Windows, use `.\gradlew.bat runClient`. The development game's files are stor
 ## Project layout
 
 - `src/main/java/net/foxlemon/foxsfoxtail/` — mod entry point and configuration.
-- `src/main/java/net/foxlemon/foxsfoxtail/client/` — rendering, model geometry and animation, spring physics, block contact, and settings screen.
-- `src/main/resources/assets/foxsfoxtail/` — texture and language resources.
+- `src/main/java/net/foxlemon/foxsfoxtail/client/` — rendering, model-data loader, animation, spring physics, block contact, and settings screen.
+- `src/main/resources/assets/foxsfoxtail/` — model JSON, texture, and language resources.
 - `src/main/templates/META-INF/neoforge.mods.toml` — mod metadata; Gradle fills in values from `gradle.properties`.
 - `model/fox_tail.bbmodel` — editable Blockbench model.
+- `tools/export_tail_model.py` — converts the Blockbench project to the runtime model JSON.
 
-The model is not yet loaded dynamically from the Blockbench file. After changing its geometry, export it as a Java entity model and update `FoxTailModel.createBodyLayer()`; keep the invisible collision-box coordinates in `TailBlockCollision` aligned with the Blockbench collision cubes.
+## Changing the tail model
+
+Edit `model/fox_tail.bbmodel` in Blockbench, then run `python3 tools/export_tail_model.py` from the repository root. This updates `src/main/resources/assets/foxsfoxtail/model/entity/fox_tail.json`. Run `python3 tools/export_tail_model.py --check` to verify the export is current. No generated Java code needs to be pasted into `FoxTailModel`; that class now handles animation only.
+
+The `tail → middle → tip` group hierarchy is required by the animation. Keep one inner collision guide cube in each group, named with the `collision` prefix. The exporter stores these guides in the JSON but does not draw them. If you move the attachment point on a new rig, update the JSON's `attachment` coordinates after exporting; later exports preserve that value. The exporter supports box UV cubes and cube rotations; rotated groups and per-face UV models are not supported.
+
+A resource pack can replace `assets/foxsfoxtail/model/entity/fox_tail.json` and `assets/foxsfoxtail/texture/entity/fox_tail.png`. Reloading resources updates the tail model without recompiling the mod. This is a custom Fox's Foxtail model format, not a raw `.bbmodel` or Java export. Invalid replacement models fall back to the bundled tail and log a warning.
+
+In this JSON, `pivot` and `attachment` are measured in model pixels, `rotation` uses radians, each cube's `box` is `[x, y, z, width, height, depth]`, and each bone's `collision` is `[minX, minY, minZ, maxX, maxY, maxZ]`. The three animated bones and their collision boxes are required even when the visible cubes change.
 
 ## Credits and license
 

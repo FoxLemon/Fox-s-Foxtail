@@ -10,12 +10,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-// Visual-only block contact. These inner boxes match the collision cubes in fox_tail.bbmodel.
-// The Blockbench cubes are guides; they are deliberately absent from createBodyLayer().
+// Visual-only block contact. Model packs provide the inner collision guides.
 final class TailBlockCollision {
-    private static final AABB ROOT_BOX = new AABB(-8, -7, -1, -6, -5, 1);
-    private static final AABB MIDDLE_BOX = new AABB(0, -1, -1, 7, 1, 1);
-    private static final AABB TIP_BOX = new AABB(0, -1, -1, 3, 1, 1);
     // Probe a pixel beyond the inner collision cubes so the spring can start
     // turning before the visible fur passes deeply into a wall.
     private static final double CONTACT_MARGIN = 1.0;
@@ -28,22 +24,23 @@ final class TailBlockCollision {
 
     private TailBlockCollision() {}
 
-    static Bends sample(FoxTailModel model, PoseStack poseStack, AvatarRenderState state,
+    static Bends sample(FoxTailModel model, FoxTailGeometry.Geometry geometry,
+                        PoseStack poseStack, AvatarRenderState state,
                         ClientLevel level, AbstractClientPlayer player, Vector3f entityOrigin) {
         // The render layer has already positioned the tail behind the player's torso.
         // Pose each part so the probes inherit the same root, middle, and tip rotations.
         model.setupAnim(state);
         poseStack.pushPose();
         model.rootCollisionPart().translateAndRotate(poseStack);
-        Vec3 root = bendForBox(poseStack.last().pose(), ROOT_BOX, state, level, player, entityOrigin);
+        Vec3 root = bendForBox(poseStack.last().pose(), geometry.rootBox(), state, level, player, entityOrigin);
 
         poseStack.pushPose();
         model.middleCollisionPart().translateAndRotate(poseStack);
-        Vec3 middle = bendForBox(poseStack.last().pose(), MIDDLE_BOX, state, level, player, entityOrigin);
+        Vec3 middle = bendForBox(poseStack.last().pose(), geometry.middleBox(), state, level, player, entityOrigin);
 
         poseStack.pushPose();
         model.tipCollisionPart().translateAndRotate(poseStack);
-        Vec3 tip = bendForBox(poseStack.last().pose(), TIP_BOX, state, level, player, entityOrigin);
+        Vec3 tip = bendForBox(poseStack.last().pose(), geometry.tipBox(), state, level, player, entityOrigin);
         poseStack.popPose();
         poseStack.popPose();
         poseStack.popPose();

@@ -14,6 +14,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.minecraft.client.Minecraft;
@@ -330,10 +331,9 @@ public class FoxTailClient {
         });
     }
 
-    @SubscribeEvent 
-    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
-        // Register the geometry recipe; :: passes the method to be called later.
-        event.registerLayerDefinition(FoxTailModel.MY_LAYER, FoxTailModel::createBodyLayer);
+    @SubscribeEvent
+    public static void registerTailModelReload(AddClientReloadListenersEvent event) {
+        event.addListener(FoxTailGeometry.FILE, new FoxTailGeometry.Reload());
     }
 
     @SubscribeEvent 
@@ -342,7 +342,7 @@ public class FoxTailClient {
         for (PlayerModelType type : event.getSkins()) {
             AvatarRenderer<AbstractClientPlayer> playRenderer = event.getPlayerRenderer(type);
             if (playRenderer != null) {
-                playRenderer.addLayer(new FoxTailRenderLayers(playRenderer,event.getEntityModels()));
+                playRenderer.addLayer(new FoxTailRenderLayers(playRenderer));
             }
         }
     }
