@@ -11,23 +11,31 @@ This repository contains the **NeoForge version**, currently under development. 
 | Minecraft | 26.1.2 |
 | NeoForge development target | 26.1.2.109 |
 | Java | 25 |
-| Mod | 0.1.5.alpha.2 |
+| Mod | mc26.1.2-beta.1 |
 
 The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
 ## Features
 
-- A textured fox tail attached to the player's torso, supporting normal and slim player models.
-- A root, middle, and tip model hierarchy.
-- Movement-driven spring bending, stationary-turn lag, and a twist response to torso roll.
-- Separate root, middle, and tip springs: the root moves at 25% strength, while the tip follows the middle with half-strength extra bend.
-- Leg avoidance and smooth root-angle changes for crouching, swimming, crawling, elytra flight, sleeping, and riding.
-- The tail flashes with the player when hurt.
-- Adjustable root elevation from **−90° to +90°**.
-- A custom settings screen with sliders, a player preview, Reset defaults, Save, and Cancel.
+### Appearance and poses
+
+- A textured fox tail attached to the player's torso on normal and slim player models. It follows torso poses and flashes with the player when hurt.
+- A root, middle, and tip hierarchy, with leg avoidance and smooth tail-angle changes for crouching, swimming, crawling, elytra flight, sleeping, and riding.
+
+### Motion and block contact
+
+- Separate springs for the root, middle, and tip. Player movement, stationary turns, and torso roll drive the tail; the tip follows the middle with its own delayed, half-strength bend.
+- The root uses 8% of the movement-driven bend so the base stays relatively steady. When the tail touches blocks, the middle and tip also pull the root away from the obstacle.
+- Invisible inner collision boxes let some outer fur overlap blocks. Contact with block collision shapes bends the tail away without changing the player's movement or block physics.
+- A configurable soft bend limit adds exponentially stronger resistance and damping past the chosen angle while still allowing stronger forces to bend farther.
+
+### Controls
+
+- Adjustable resting root angle from **−90° to +90°**, plus movement and spring settings.
+- A settings screen with sliders, number input boxes, an animated preview, Reset defaults, Save, and Cancel.
 - An optional key binding to open the settings screen, unassigned by default.
 
-Movement-driven physics currently runs for the local player only. Other players can render with tails, but do not receive their own movement-driven simulation.
+Movement-driven physics and block contact currently run for the local player only. Other players can render with tails, but do not receive their own simulated motion on your client. Entity collision is not included.
 
 ## Installation
 
@@ -46,11 +54,12 @@ Open **Mods → Fox's Foxtail → Config**. You can also assign **Open Tail Sett
 | Movement strength | How strongly movement and torso roll drive the spring. |
 | Frequency | How quickly the spring responds; higher values feel stiffer. |
 | Damping | How much the spring's oscillation is reduced. |
+| Soft-limit damping power | How quickly extra damping grows after a segment bends beyond the soft limit. |
 | Response | How the spring reacts initially to changes in its target. |
 | Soft bend limit | Extra restoring force grows exponentially beyond this angle, per segment and axis. This is a soft limit, so stronger motion can still bend farther. |
 | Root angle | Raises or lowers the whole tail. The middle and tip inherit this angle. |
 
-The preview uses a repeating test impulse to demonstrate the draft settings. Join a world to see the player preview. **Save** applies and stores changes; **Cancel** or Escape discards them. **Reset defaults** resets the draft, which must still be saved.
+Type a value in the box beside a slider for precise control. The preview uses a repeating test impulse to demonstrate the draft settings. Join a world to see the player preview. **Save** applies and stores changes; **Cancel** or Escape discards them. **Reset defaults** resets the draft, which must still be saved.
 
 ## Building from source
 
@@ -68,7 +77,7 @@ bash ./gradlew build
 .\gradlew.bat build
 ```
 
-The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-0.1.5.alpha.2.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.1.jar`. Change `mod_version` in `gradle.properties` when preparing a new version.
 
 To launch the development client:
 
@@ -81,10 +90,12 @@ On Windows, use `.\gradlew.bat runClient`. The development game's files are stor
 ## Project layout
 
 - `src/main/java/net/foxlemon/foxsfoxtail/` — mod entry point and configuration.
-- `src/main/java/net/foxlemon/foxsfoxtail/client/` — rendering, model animation, physics, and settings screen.
+- `src/main/java/net/foxlemon/foxsfoxtail/client/` — rendering, model geometry and animation, spring physics, block contact, and settings screen.
 - `src/main/resources/assets/foxsfoxtail/` — texture and language resources.
 - `src/main/templates/META-INF/neoforge.mods.toml` — mod metadata; Gradle fills in values from `gradle.properties`.
 - `model/fox_tail.bbmodel` — editable Blockbench model.
+
+The model is not yet loaded dynamically from the Blockbench file. After changing its geometry, export it as a Java entity model and update `FoxTailModel.createBodyLayer()`; keep the invisible collision-box coordinates in `TailBlockCollision` aligned with the Blockbench collision cubes.
 
 ## Credits and license
 

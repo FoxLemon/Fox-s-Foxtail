@@ -37,6 +37,10 @@ public class FoxTailClient {
     static final double ROOT_STRENGTH_MULTIPLIER = 0.08;
     // The tip adds half as much bend as the middle, while retaining its own lag.
     static final double TIP_STRENGTH_MULTIPLIER = 0.5;
+    // A block touching the outer tail should pull the base away even when its
+    // own small collision box is still inside the player's footprint.
+    private static final double MIDDLE_TO_ROOT_CONTACT = 0.6;
+    private static final double TIP_TO_ROOT_CONTACT = 0.3;
 
     private static KeyMapping openSettingsKey;
 
@@ -79,6 +83,11 @@ public class FoxTailClient {
     private static SegmentMotion middleMotion;
     private static SegmentMotion tipMotion;
 
+    // The local player's rendered collision probes supply targets for the next physics tick.
+    private static TailBlockCollision.Bends blockBends = TailBlockCollision.Bends.ZERO;
+    private static int lastBlockSampleTick;
+    private static boolean hasBlockSample;
+
     // Player movement is shared input, so it is sampled only once per tick.
     private static Vec3 previousVelocity = Vec3.ZERO;
     private static float previousBodyYaw;
@@ -120,6 +129,8 @@ public class FoxTailClient {
             previousVelocity = Vec3.ZERO;
             previousBodyYaw = 0.0F;
             hasBaseRoll = false;
+            hasBlockSample = false;
+            blockBends = TailBlockCollision.Bends.ZERO;
             return;
         }
 
@@ -132,12 +143,15 @@ public class FoxTailClient {
             previousVelocity = player.getDeltaMovement();
             previousBodyYaw = player.yBodyRot;
             hasBaseRoll = false;
+            hasBlockSample = false;
+            blockBends = TailBlockCollision.Bends.ZERO;
             previousRootAngle = currentRootAngle = FoxTailConfig.TAIL_ANGLE.get().floatValue();
         }
 
         if (minecraft.isPaused()) {
             // Ignore any camera/body rotation that happens while simulation is paused.
             previousBodyYaw = player.yBodyRot;
+            hasBlockSample = false;
             return;
         }
         
@@ -206,10 +220,18 @@ public class FoxTailClient {
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
-        // The root moves a little without changing the middle's existing response.
-        rootMotion.tick(target.scale(ROOT_STRENGTH_MULTIPLIER));
+        TailBlockCollision.Bends contact = hasBlockSample && physicsTick - lastBlockSampleTick <= 2
+            ? blockBends : TailBlockCollision.Bends.ZERO;
+
+        // Only movement uses the gentle root multiplier. Share outer-segment
+        // block contact with the root so the whole tail can turn away from a wall.
+        Vec3 rootContact = contact.root()
+            .add(contact.middle().scale(MIDDLE_TO_ROOT_CONTACT))
+            .add(contact.tip().scale(TIP_TO_ROOT_CONTACT));
+        rootMotion.tick(target.scale(ROOT_STRENGTH_MULTIPLIER).add(rootContact));
         // The tip follows the middle's output, adding another stage of lag.
-        tipMotion.tick(middleMotion.tick(target).scale(TIP_STRENGTH_MULTIPLIER));
+        Vec3 middle = middleMotion.tick(target.add(contact.middle()));
+        tipMotion.tick(middle.scale(TIP_STRENGTH_MULTIPLIER).add(contact.tip()));
     }
 
     private static final class SegmentMotion {
@@ -241,6 +263,18 @@ public class FoxTailClient {
     public static void disablePhysicsRecording(AvatarRenderState state) {
         // The settings preview must not feed its artificial pose back into gameplay physics.
         state.setRenderData(LOCAL_TAIL, false);
+    }
+
+    public static boolean shouldSampleBlockCollision(AvatarRenderState state) {
+        return state.getRenderDataOrDefault(LOCAL_TAIL, false)
+            && !Minecraft.getInstance().isPaused() && lastBlockSampleTick != physicsTick;
+    }
+
+    public static void recordBlockCollision(AvatarRenderState state, TailBlockCollision.Bends bends) {
+        if (!state.getRenderDataOrDefault(LOCAL_TAIL, false)) return;
+        blockBends = bends;
+        lastBlockSampleTick = physicsTick;
+        hasBlockSample = true;
     }
 
     // Rendering only supplies the latest pose; tickTail advances the spring.

@@ -31,6 +31,11 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
         this.tip = middle.getChild("tip");
     }
 
+    // Collision probes follow these same animated parts without adding cubes to the render layer.
+    ModelPart rootCollisionPart() { return tail; }
+    ModelPart middleCollisionPart() { return middle; }
+    ModelPart tipCollisionPart() { return tip; }
+
     // Blockbench export. Extra _r1 children preserve the decorative planes' rotations.
     // addBox defines local geometry; PartPose defines its pivot relative to its parent.
 	@SuppressWarnings("unused")

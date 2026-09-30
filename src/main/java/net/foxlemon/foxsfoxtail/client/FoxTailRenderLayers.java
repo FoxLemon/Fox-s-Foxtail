@@ -5,6 +5,7 @@ import com.mojang.math.Axis;
 
 import net.foxlemon.foxsfoxtail.FoxsFoxTail;
 import net.minecraft.client.model.geom.EntityModelSet;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
@@ -14,6 +15,7 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 
 // Adds the tail to the existing player renderer. PlayerModel is the parent's model.
 public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerModel> {
@@ -35,6 +37,13 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
 
     @Override 
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, AvatarRenderState renderState, float yRot, float xRot) {
+
+        var minecraft = Minecraft.getInstance();
+        boolean sampleBlocks = minecraft.level != null && minecraft.player != null
+            && FoxTailClient.shouldSampleBlockCollision(renderState);
+        // Undo the renderer's final -1.501 model offset when converting probes to world positions.
+        Vector3f entityOrigin = sampleBlocks
+            ? poseStack.last().pose().transformPosition(0, 1.501F, 0, new Vector3f()) : null;
 
         // Save transforms so the tail's positioning does not affect other layers.
         poseStack.pushPose();
@@ -60,6 +69,12 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
 
         // Compensate for this export's base position; revisit after moving its pivot.
         poseStack.translate(8.0/16.0, -18.0/16.0, 0);
+
+        if (sampleBlocks) {
+            var bends = TailBlockCollision.sample(this.model, poseStack, renderState,
+                minecraft.level, minecraft.player, entityOrigin);
+            FoxTailClient.recordBlockCollision(renderState, bends);
+        }
 
         // Use the player's hurt/death overlay so the tail flashes red with the body.
         collector

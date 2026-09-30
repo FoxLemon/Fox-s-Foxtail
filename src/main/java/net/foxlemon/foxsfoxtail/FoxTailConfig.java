@@ -34,7 +34,7 @@ public class FoxTailConfig {
     public static final ModConfigSpec.DoubleValue MAX_BEND = BUILDER
         .translation("foxsfoxtail.configuration.maximumTargetBend")
         .comment("Soft bend limit per segment and axis in degrees. Extra restoring force grows exponentially beyond this angle; it is not a hard cap.")
-        .defineInRange("maximumTargetBend", 15.0, 0.0, 90.0);
+        .defineInRange("maximumTargetBend", 30.0, 0.0, 90.0);
 
     public static final ModConfigSpec.DoubleValue TAIL_ANGLE = BUILDER
         .comment("Root elevation in degrees: negative lowers the tail, positive raises it.")
