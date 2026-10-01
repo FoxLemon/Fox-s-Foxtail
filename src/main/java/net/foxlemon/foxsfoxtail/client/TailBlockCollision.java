@@ -10,8 +10,10 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-// Visual-only block contact. Model packs provide the inner collision guides.
+// Visual-only contact against solid block collision shapes, not selection outlines or entities.
+// Model packs supply the inner guides, allowing the outer fur to clip slightly.
 final class TailBlockCollision {
+    // Cap the combined world-space correction (blocks) before converting it to joint rotation.
     private static final double MAX_PUSH = 0.25;
     private static final double MAX_BEND = Math.toRadians(35);
 
@@ -115,6 +117,7 @@ final class TailBlockCollision {
 
     private static Vec3 worldPoint(Matrix4f transform, double x, double y, double z,
                                    AvatarRenderState state, Vector3f entityOrigin) {
+        // Remove the shared render translation, then add the player's interpolated world position.
         Vector3f point = transform.transformPosition((float) x, (float) y, (float) z, new Vector3f());
         return new Vec3(state.x + point.x - entityOrigin.x,
             state.y + point.y - entityOrigin.y,
@@ -153,9 +156,11 @@ final class TailBlockCollision {
 
     // Separating-axis testing rejects empty corners of the enclosing AABB.
     // The smallest overlap gives a push out of the solid block's collision box.
+    // Center/half-sizes are world-space blocks; axes are unit directions of the rotated guide.
     record OrientedBox(Vec3 center, Vec3[] axes, double[] halfSizes) {
         Vec3 pushFrom(AABB block) {
             Vec3[] worldAxes = {new Vec3(1, 0, 0), new Vec3(0, 1, 0), new Vec3(0, 0, 1)};
+            // Check both boxes' axes and their cross products; any gap rules out contact.
             Vec3[] candidates = new Vec3[15];
             for (int i = 0; i < 3; i++) {
                 candidates[i] = axes[i];

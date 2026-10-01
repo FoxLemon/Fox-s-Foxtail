@@ -20,6 +20,7 @@ def rounded(values):
 
 
 def local_box(cube, origin):
+    # Java entity coordinates reverse Blockbench X/Y; cube offsets are relative to the bone.
     start, end = cube["from"], cube["to"]
     return rounded([
         origin[0] - end[0], origin[1] - end[1], start[2] - origin[2],
@@ -35,6 +36,7 @@ def collision_box(cube, origin):
 
 
 def relative_pivot(origin, parent_origin, is_root=False):
+    # Root Y uses the Java entity baseline of 24 pixels; child pivots are parent-relative.
     if is_root:
         return rounded([-origin[0], 24 - origin[1], origin[2]])
     return rounded([
@@ -65,6 +67,7 @@ def convert_group(node, parent_origin, groups, elements, is_root=False):
             continue
         cube = elements[child]
         if cube["name"].startswith("collision"):
+            # Guide cubes become collision data only, never visible geometry.
             if "collision" in result:
                 raise ValueError(f"Multiple collision guides in {group['name']}")
             result["collision"] = collision_box(cube, origin)
@@ -76,6 +79,7 @@ def convert_group(node, parent_origin, groups, elements, is_root=False):
         uv = cube.get("uv_offset", [0, 0])
         angles = rotation(cube)
         if any(angles):
+            # ModelPart rotates whole parts, so rotated cubes need their own child part.
             cube_origin = cube.get("origin", origin)
             children.append({
                 "name": cube["name"] + "_r1",
@@ -129,6 +133,7 @@ def main():
         if "collision" not in part:
             raise ValueError(f"Missing collision guide in {part['name']}")
     if args.check:
+        # Validation mode compares data without modifying the exported model.
         if previous != result:
             raise SystemExit(f"Outdated tail model: run python3 tools/export_tail_model.py")
         print(f"Tail model is current: {args.output}")

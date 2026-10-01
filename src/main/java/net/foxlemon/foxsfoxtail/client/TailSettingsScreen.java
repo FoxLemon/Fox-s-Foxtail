@@ -12,7 +12,7 @@ import net.neoforged.neoforge.common.ModConfigSpec;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-// Like the Forge screen, settings remain a draft until Save is pressed.
+// Custom settings editor with an isolated impulse preview. Only Save changes the config.
 public final class TailSettingsScreen extends Screen {
     private static final int STRENGTH = 0;
     private static final int FREQUENCY = 1;
@@ -23,6 +23,7 @@ public final class TailSettingsScreen extends Screen {
     private static final int TAIL_ANGLE = 6;
 
     private final Screen parent;
+    // All setting arrays share these indices so each slider and number box edit the same value.
     private final ModConfigSpec.DoubleValue[] settings = {
         FoxTailConfig.MOVEMENT_STRENGTH, FoxTailConfig.FREQUENCY,
         FoxTailConfig.DAMPING, FoxTailConfig.SOFT_LIMIT_DAMPING_MULTIPLIER,
@@ -99,6 +100,7 @@ public final class TailSettingsScreen extends Screen {
     }
 
     private void onNumberChanged(int index, String text) {
+        // Preserve the last valid draft while the player types incomplete input such as "-".
         Double parsed = parseInput(index, text);
         if (parsed != null) {
             draft[index] = parsed;
@@ -118,6 +120,7 @@ public final class TailSettingsScreen extends Screen {
     }
 
     private void updateInputValidity() {
+        // Invalid text remains editable, but cannot be saved.
         boolean valid = true;
         for (int i = 0; i < numberInputs.length; i++) {
             boolean inputValid = parseInput(i, numberInputs[i].getValue()) != null;
@@ -217,6 +220,7 @@ public final class TailSettingsScreen extends Screen {
 
         @Override
         protected void applyValue() {
+            // Sliders round to hundredths; the number box accepts more precise values.
             draft[index] = Math.round((minimum[index] + value *
                 (maximum[index] - minimum[index])) * 100) / 100.0;
             numberInputs[index].setValue(Double.toString(draft[index]));

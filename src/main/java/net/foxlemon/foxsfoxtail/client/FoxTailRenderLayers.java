@@ -37,7 +37,8 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
 
         var minecraft = Minecraft.getInstance();
         boolean shadowPass = TailShaderCompat.isShadowPass();
-        // Shadow renders may use different transforms and must not feed the simulation.
+        // Shadow passes can render first with light-space transforms. Only normal draws
+        // may record contacts or torso roll; the tail still renders in every pass.
         boolean sampleBlocks = !shadowPass && minecraft.level != null && minecraft.player != null
             && FoxTailClient.shouldSampleBlockCollision(renderState);
         // Undo the renderer's final -1.501 model offset when converting probes to world positions.

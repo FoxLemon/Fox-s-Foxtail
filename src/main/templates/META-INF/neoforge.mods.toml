@@ -14,7 +14,8 @@ license="${mod_license}"
 # Must match the @Mod ID and the assets namespace in the source code.
 modId="${mod_id}" #mandatory
 
-# Release version supplied by gradle.properties.
+# Internal version supplied by gradle.properties; it must begin with a number.
+# The mc prefix is added only to the JAR filename and release tag.
 version="${mod_version}" #mandatory
 
 # Name shown in the Mods menu.

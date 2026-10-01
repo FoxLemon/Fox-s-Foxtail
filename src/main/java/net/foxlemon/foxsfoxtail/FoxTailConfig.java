@@ -2,7 +2,7 @@ package net.foxlemon.foxsfoxtail;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-// Saved client settings. NeoForge's config screen provides editing and reset controls.
+// Saved client settings; TailSettingsScreen edits a draft and writes it on Save.
 public class FoxTailConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 

@@ -29,7 +29,7 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.renderstate.AvatarRenderStateModifier;
 import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 
-// Load client setup here and automatically subscribe the static event handlers below.
+// Client setup and local-player simulation. Ticks advance the springs; rendering samples them.
 @Mod(value = FoxsFoxTail.MODID, dist = Dist.CLIENT)
 @EventBusSubscriber(modid = FoxsFoxTail.MODID, value = Dist.CLIENT)
 public class FoxTailClient {
@@ -70,13 +70,14 @@ public class FoxTailClient {
     public static final ContextKey<Double> TAIL_ANGLE =
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tail_angle"));
     
+    // Leg-clearance offsets in degrees, unlike the spring rotations above.
     public  static final ContextKey<Vec3> TAIL_AVOIDANCE = 
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tail_avoidance"));
     // Marks the local player's render state so other players cannot drive our spring.
     private static final ContextKey<Boolean> LOCAL_TAIL =
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "local_tail"));
 
-    // This initial test simulates only the local player's tail.
+    // Only this player owns simulated motion; remote players receive a resting pose.
     private static AbstractClientPlayer trackedPlayer;
 
     // Each segment owns its spring and the two snapshots used for smooth rendering.
@@ -104,7 +105,7 @@ public class FoxTailClient {
     public FoxTailClient(ModContainer container) {
         // Register the saved client settings before opening their editor or reading them in-game.
         container.registerConfig(ModConfig.Type.CLIENT, FoxTailConfig.SPEC);
-        // Open our slider screen from the Mods menu.
+        // Open our custom settings screen from the Mods menu.
         container.registerExtensionPoint(IConfigScreenFactory.class,
             (modContainer, parent) -> new TailSettingsScreen(parent));
     }
@@ -159,7 +160,7 @@ public class FoxTailClient {
         float restingAngle = FoxTailConfig.TAIL_ANGLE.get().floatValue();
         float targetAngle = restingAngle;
 
-        // Pose angle diction 
+        // Choose one pose target in priority order, then approach it smoothly each tick.
         if (player.isSleeping()) {
             targetAngle = TailPose.SLEEP_ANGLE;
         } else if (player.isFallFlying() || player.isSwimming() || player.isVisuallyCrawling()) {
@@ -222,6 +223,7 @@ public class FoxTailClient {
         Vec3 target = new Vec3(twistX, bendY, bendZ);
         // Root-angle changes are not yet fed into this target to produce segment lag.
 
+        // Expire old contacts if rendering stops; otherwise an unseen obstacle keeps pushing.
         TailBlockCollision.Bends contact = hasBlockSample && physicsTick - lastBlockSampleTick <= 2
             ? blockBends : TailBlockCollision.Bends.ZERO;
 
@@ -236,6 +238,7 @@ public class FoxTailClient {
         tipMotion.tick(middle.scale(TIP_STRENGTH_MULTIPLIER).add(contact.tip()));
     }
 
+    // One independent spring and interpolation history for each segment.
     private static final class SegmentMotion {
         private final TailPhysics spring = new TailPhysics(
             FoxTailConfig.FREQUENCY.get().floatValue(),
@@ -253,6 +256,7 @@ public class FoxTailClient {
                 FoxTailConfig.RESPONSE.get().floatValue());
             spring.setBendLimit(Math.toRadians(FoxTailConfig.MAX_BEND.get()));
             spring.setSoftLimitDampingMultiplier(FoxTailConfig.SOFT_LIMIT_DAMPING_MULTIPLIER.get());
+            // Minecraft runs 20 simulation ticks per second; the spring uses seconds.
             current = spring.Update(0.05f, target);
             return current;
         }
@@ -268,6 +272,7 @@ public class FoxTailClient {
     }
 
     public static boolean shouldSampleBlockCollision(AvatarRenderState state) {
+        // Accept at most one gameplay collision sample per tick, never a settings preview.
         return state.getRenderDataOrDefault(LOCAL_TAIL, false)
             && !Minecraft.getInstance().isPaused() && lastBlockSampleTick != physicsTick;
     }
@@ -334,6 +339,7 @@ public class FoxTailClient {
 
     @SubscribeEvent
     public static void registerTailModelReload(AddClientReloadListenersEvent event) {
+        // Resource reloads can replace geometry without recompiling the mod.
         event.addListener(FoxTailGeometry.FILE, new FoxTailGeometry.Reload());
     }
 

@@ -6,7 +6,7 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.util.context.ContextKey;
 import net.minecraft.world.phys.Vec3;
 
-// Tail animation. FoxTailGeometry supplies the geometry and collision guides.
+// Holds drawable parts and applies their pose. FoxTailGeometry supplies the geometry.
 public class FoxTailModel extends EntityModel<AvatarRenderState> {
 
     // Child segments inherit their parent's motion: tail -> middle -> tip.
@@ -31,6 +31,7 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
 
     @Override
     public void setupAnim(AvatarRenderState state) {
+        // Reset baked poses before applying this frame; rotations must not accumulate.
         super.setupAnim(state);
 
         setupAvoidance(state);
@@ -40,6 +41,7 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     }
 
     private void setupPhysics(ModelPart part, AvatarRenderState state, ContextKey<Vec3> key) {
+        // Spring output is already in local-axis radians; this method does not advance physics.
         Vec3 rotation = state.getRenderDataOrDefault(key, Vec3.ZERO);
         part.zRot += (float) rotation.z;
         part.yRot += (float) rotation.y;
@@ -47,6 +49,7 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     }
 
     private void setupAvoidance(AvatarRenderState state) {
+        // Convert pose/clearance degrees to the model's rotation convention, then add spring offsets.
         Vec3 rootRotation = state.getRenderDataOrDefault(FoxTailClient.ROOT_ROTATION, Vec3.ZERO);
         float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0))
             + (float) rootRotation.z;
@@ -59,8 +62,7 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
         tail.yRot += sway;
         tail.xRot += twist;
 
-        // Include spring rotation in the compensation so the root stays attached.
-        // ModelPart applies Y rotation before Z rotation.
+        // Compensate for all three root rotations so an offset attachment stays fixed.
         float cosAngle = (float) Math.cos(angle);
         float sinAngle = (float) Math.sin(angle);
         float cosSway = (float) Math.cos(sway);

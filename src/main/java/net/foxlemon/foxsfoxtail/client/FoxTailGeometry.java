@@ -47,6 +47,7 @@ final class FoxTailGeometry {
         }
 
         Vec3 renderOffset() {
+            // Move the pack's attachment to the layer's origin; model pixels become blocks.
             return rootPivot.add(attachment).scale(-1.0 / 16.0);
         }
     }
@@ -54,6 +55,7 @@ final class FoxTailGeometry {
     static final class Reload extends SimplePreparableReloadListener<Geometry> {
         @Override
         protected Geometry prepare(ResourceManager resources, ProfilerFiller profiler) {
+            // ResourceManager chooses the highest-priority pack; malformed overrides fall back.
             var resource = resources.getResource(FILE);
             if (resource.isEmpty()) return BUNDLED;
             try (Reader reader = resource.get().openAsReader()) {
@@ -66,11 +68,13 @@ final class FoxTailGeometry {
 
         @Override
         protected void apply(Geometry geometry, ResourceManager resources, ProfilerFiller profiler) {
+            // Renderers notice this replacement and bake their own new parts on the next draw.
             active = geometry;
         }
     }
 
     private static Geometry readBundled() {
+        // Read directly from the mod so a broken resource pack cannot replace the fallback.
         try (var stream = FoxTailGeometry.class.getResourceAsStream("/assets/foxsfoxtail/model/entity/fox_tail.json")) {
             if (stream == null) throw new IllegalStateException("Missing bundled tail model " + FILE);
             return parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
@@ -116,8 +120,8 @@ final class FoxTailGeometry {
             colliders.get("tail"), colliders.get("middle"), colliders.get("tip"));
     }
 
-    private static void addPart(PartDefinition parent, JsonObject json, Map<String, AABB> colliders,
-                                int[] count, int depth) {
+    private static void addPart(PartDefinition parent, JsonObject json, Map<String, AABB> colliders, int[] count, int depth) {
+        // Pivots/cubes/colliders use parent-local model pixels; rotations use radians.
         if (depth > 16 || ++count[0] > 128) throw new IllegalArgumentException("Tail model is too large");
         String name = json.get("name").getAsString();
         if (name.isBlank()) throw new IllegalArgumentException("Empty tail part name");

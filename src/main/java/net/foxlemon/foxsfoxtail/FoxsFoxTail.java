@@ -10,9 +10,9 @@ import net.neoforged.fml.common.Mod;
 @Mod(FoxsFoxTail.MODID)
 public class FoxsFoxTail {
 
-    // Define mod id in a common place for everything to reference
+    // Shared namespace for metadata, assets, and client registration.
     public static final String MODID = "foxsfoxtail";
-    // Directly reference a slf4j logger
+    // Shared logger for messages from the mod.
     public static final Logger LOGGER = LogUtils.getLogger();
 
 }

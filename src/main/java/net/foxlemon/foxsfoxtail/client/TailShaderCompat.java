@@ -4,7 +4,8 @@ import com.mojang.logging.LogUtils;
 import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 
-// Iris is optional. Resolve its public API once without requiring it to be installed.
+// Iris shadow transforms are for drawing, not world collision. Detect those passes via its API.
+// Reflection keeps Iris optional; the API lookup is cached rather than repeated every frame.
 final class TailShaderCompat {
     private static final BooleanSupplier SHADOW_PASS = findShadowPass();
 

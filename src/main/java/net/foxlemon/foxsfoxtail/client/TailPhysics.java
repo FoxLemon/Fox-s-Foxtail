@@ -2,6 +2,7 @@ package net.foxlemon.foxsfoxtail.client;
 
 import net.minecraft.world.phys.Vec3;
 
+// Three independent angular spring axes. Inputs/outputs are radians; time is in seconds.
 public class TailPhysics {
 
     private static final int SUBSTEPS = 4;
@@ -10,8 +11,10 @@ public class TailPhysics {
     private double bendLimit = Double.POSITIVE_INFINITY;
     // This value controls the exponent of damping beyond the soft bend limit.
     private double softLimitDampingMultiplier = 1.0;
+    // xp: previous target, y: simulated angle, yd: angular velocity in radians per second.
     private Vec3 xp;
     private Vec3 y, yd;
+    // Coefficients derived from frequency (f), damping ratio (z), and response (r).
     private float k1, k2, k3;
     private final float PI = (float) Math.PI;
 
@@ -36,6 +39,7 @@ public class TailPhysics {
     }
 
     public Vec3 Update(float T, Vec3 x) {
+        // Estimate target velocity when the caller supplies only an angular target.
         return Update(T, x, null);
     }
 
@@ -55,6 +59,7 @@ public class TailPhysics {
     }
 
     public Vec3 Update(float T, Vec3 x, Vec3 xd) {
+        // xd is optional target angular velocity, not the player's movement velocity.
 
         if (!Float.isFinite(T) || T <= 0) {
             return y;
@@ -63,9 +68,11 @@ public class TailPhysics {
         if (xd == null) {
             xd = x.subtract(xp).scale(1.0/T);
         }
+        // Keep the baseline current even when an explicit velocity was supplied.
         xp = x;
 
         Vec3 drive = x.add(xd.scale(k3));
+        // Smaller integration steps improve the response near the nonlinear soft limit.
         double step = T / (double) SUBSTEPS;
         for (int i = 0; i < SUBSTEPS; i++) {
             Vec3 next = new Vec3(
