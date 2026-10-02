@@ -2,16 +2,16 @@
 
 A cosmetic Minecraft mod by **FoxLemon** that adds a fox tail to the player, with adjustable angles and spring-based movement.
 
-This repository contains the **NeoForge version**, currently under development. Features and animation behaviour may change between releases.
+This branch ports the NeoForge mod to Minecraft 1.21.1 for ATM10. It builds, but the tail and settings still need in-game testing before release.
 
 ## Current target
 
 | Component | Version |
 | --- | --- |
-| Minecraft | 26.1.2 |
-| NeoForge development target | 26.1.2.109 |
-| Java | 25 |
-| Mod | mc26.1.2-beta.4 |
+| Minecraft | 1.21.1 |
+| NeoForge development target | 21.1.251 |
+| Java | 21 |
+| Mod build | mc1.21.1-beta.1 (unreleased) |
 
 The JAR from this project is for NeoForge. Other Minecraft versions and loaders require a separate compatible build.
 
@@ -40,7 +40,7 @@ Movement-driven physics and block contact currently run for the local player onl
 
 ## Installation
 
-1. Set up a Minecraft **26.1.2** instance with NeoForge **26.1.2.109**.
+1. Set up a Minecraft **1.21.1** instance with NeoForge **21.1.251**.
 2. Place the built mod JAR in that instance's `mods` folder.
 3. Launch Minecraft and switch to third person to see the tail.
 
@@ -64,7 +64,7 @@ Type a value in the box beside a slider for precise control. The preview uses a 
 
 ## Building from source
 
-Use **JDK 25** and run the Gradle wrapper from the project directory.
+Use **JDK 21** and run the Gradle wrapper from the project directory.
 
 ### macOS / Linux
 
@@ -78,7 +78,7 @@ bash ./gradlew build
 .\gradlew.bat build
 ```
 
-The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc26.1.2-beta.4.jar`. Change `mod_version` in `gradle.properties` when preparing a new version. The internal version is `26.1.2-beta.4`: NeoForge requires it to start with a number. The build adds `mc` to the JAR filename, and release tags can use that same prefix.
+The mod JAR is written to `build/libs/`. With the current project settings, its name is `foxsfoxtail-mc1.21.1-beta.1.jar`. Change `mod_version` in `gradle.properties` when preparing a new version. The internal version is `1.21.1-beta.1`: NeoForge requires it to start with a number. The build adds `mc` to the JAR filename, and release tags can use that same prefix.
 
 To launch the development client:
 

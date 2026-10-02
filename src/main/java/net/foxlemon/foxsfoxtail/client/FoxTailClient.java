@@ -6,28 +6,21 @@ import net.foxlemon.foxsfoxtail.FoxTailConfig;
 import net.neoforged.fml.config.ModConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.entity.player.AvatarRenderer;
-import net.minecraft.world.entity.player.PlayerModelType;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.resources.PlayerSkin;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.ClientAvatarEntity;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.context.ContextKey;
-import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.phys.Vec3;
 
 import net.neoforged.neoforge.client.event.ClientTickEvent;
-import net.neoforged.neoforge.client.renderstate.AvatarRenderStateModifier;
-import net.neoforged.neoforge.client.renderstate.RegisterRenderStateModifiersEvent;
 
 // Load client setup here and automatically subscribe the static event handlers below.
 @Mod(value = FoxsFoxTail.MODID, dist = Dist.CLIENT)
@@ -47,34 +40,14 @@ public class FoxTailClient {
 
     @SubscribeEvent
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
-        var category = new KeyMapping.Category(
-            Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "controls"));
-        event.registerCategory(category);
         // UNKNOWN leaves the shortcut unassigned until the player chooses a key.
         openSettingsKey = new KeyMapping("key.foxsfoxtail.open_settings",
-            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), category);
+            InputConstants.Type.KEYSYM, InputConstants.UNKNOWN.getValue(), "key.categories.foxsfoxtail");
         event.register(openSettingsKey);
     }
 
-    // Render-data keys carry values to FoxTailModel.setupAnim(); they do not move parts themselves.
-    // The vector contains angular offsets in radians: X twist, Y/Z bend, not a position.
-    public static final ContextKey<Vec3> ROOT_ROTATION =
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "root_rotation"));
-
-    public static final ContextKey<Vec3> MIDDLE_ROTATION =
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "middle_rotation"));
-
-    public static final ContextKey<Vec3> TIP_ROTATION =
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tip_rotation"));
-    // Root elevation is stored separately in degrees; the model converts it to radians.
-    public static final ContextKey<Double> TAIL_ANGLE =
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tail_angle"));
-    
-    public  static final ContextKey<Vec3> TAIL_AVOIDANCE = 
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tail_avoidance"));
-    // Marks the local player's render state so other players cannot drive our spring.
-    private static final ContextKey<Boolean> LOCAL_TAIL =
-        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "local_tail"));
+    // The settings preview temporarily supplies its own pose during GUI rendering.
+    private static FoxTailModel.Pose previewPose;
 
     // This initial test simulates only the local player's tail.
     private static AbstractClientPlayer trackedPlayer;
@@ -262,26 +235,29 @@ public class FoxTailClient {
         }
     }
 
-    public static void disablePhysicsRecording(AvatarRenderState state) {
-        // The settings preview must not feed its artificial pose back into gameplay physics.
-        state.setRenderData(LOCAL_TAIL, false);
+    static void setPreviewPose(FoxTailModel.Pose pose) {
+        previewPose = pose;
     }
 
-    public static boolean shouldSampleBlockCollision(AvatarRenderState state) {
-        return state.getRenderDataOrDefault(LOCAL_TAIL, false)
+    static boolean isLocal(AbstractClientPlayer player) {
+        return trackedPlayer == player;
+    }
+
+    static boolean shouldSampleBlockCollision(AbstractClientPlayer player) {
+        return previewPose == null && isLocal(player)
             && !Minecraft.getInstance().isPaused() && lastBlockSampleTick != physicsTick;
     }
 
-    public static void recordBlockCollision(AvatarRenderState state, TailBlockCollision.Bends bends) {
-        if (!state.getRenderDataOrDefault(LOCAL_TAIL, false)) return;
+    public static void recordBlockCollision(AbstractClientPlayer player, TailBlockCollision.Bends bends) {
+        if (!isLocal(player)) return;
         blockBends = bends;
         lastBlockSampleTick = physicsTick;
         hasBlockSample = true;
     }
 
     // Rendering only supplies the latest pose; tickTail advances the spring.
-    public static void recordBaseRoll(AvatarRenderState state, double roll) {
-        if (!state.getRenderDataOrDefault(LOCAL_TAIL, false)
+    public static void recordBaseRoll(AbstractClientPlayer player, double roll) {
+        if (!isLocal(player) || previewPose != null
                 || Minecraft.getInstance().isPaused() || !Double.isFinite(roll)) {
             return;
         }
@@ -294,54 +270,32 @@ public class FoxTailClient {
         hasBaseRoll = true;
     }
 
-    @SubscribeEvent
-    public static void registerTailRenderData(
-            RegisterRenderStateModifiersEvent event) {
-
-        event.registerAvatarEntityModifier(new AvatarRenderStateModifier() {
-            @Override
-            public <T extends Avatar & ClientAvatarEntity> void accept(T avatar, AvatarRenderState state) {
-
-                // Other players receive no simulated bend; physics currently tracks only our player.
-                Vec3 rootRotation = Vec3.ZERO;
-                Vec3 middleRotation = Vec3.ZERO;
-                Vec3 tipRotation = Vec3.ZERO;
-                double rootAngle = FoxTailConfig.TAIL_ANGLE.get();
-
-                boolean localPlayer = trackedPlayer != null
-                    && avatar.getUUID().equals(trackedPlayer.getUUID());
-
-                if (localPlayer && rootMotion != null && middleMotion != null && tipMotion != null) {
-                    float partialTick = Minecraft.getInstance().getDeltaTracker()
-                        .getGameTimeDeltaPartialTick(true);
-
-                    rootRotation = rootMotion.sample(partialTick);
-                    middleRotation = middleMotion.sample(partialTick);
-                    tipRotation = tipMotion.sample(partialTick);
-                    rootAngle = previousRootAngle
-                        + (currentRootAngle - previousRootAngle) * partialTick;
-                }
-
-                // Always write all segment rotations; render states can be reused.
-                state.setRenderData(ROOT_ROTATION, rootRotation);
-                state.setRenderData(MIDDLE_ROTATION, middleRotation);
-                state.setRenderData(TIP_ROTATION, tipRotation);
-                state.setRenderData(TAIL_ANGLE, rootAngle);
-                state.setRenderData(LOCAL_TAIL, localPlayer);
-            }
-        });
+    static FoxTailModel.Pose samplePose(AbstractClientPlayer player, float partialTick, Vec3 avoidance) {
+        if (previewPose != null) {
+            return new FoxTailModel.Pose(previewPose.root(), previewPose.middle(),
+                previewPose.tip(), previewPose.angle(), avoidance);
+        }
+        // Other players currently show the resting pose without local simulation.
+        if (!isLocal(player) || rootMotion == null || middleMotion == null || tipMotion == null) {
+            return new FoxTailModel.Pose(Vec3.ZERO, Vec3.ZERO, Vec3.ZERO,
+                FoxTailConfig.TAIL_ANGLE.get(), avoidance);
+        }
+        float fraction = Math.max(0, Math.min(1, partialTick));
+        double rootAngle = previousRootAngle + (currentRootAngle - previousRootAngle) * fraction;
+        return new FoxTailModel.Pose(rootMotion.sample(fraction), middleMotion.sample(fraction),
+            tipMotion.sample(fraction), rootAngle, avoidance);
     }
 
     @SubscribeEvent
-    public static void registerTailModelReload(AddClientReloadListenersEvent event) {
-        event.addListener(FoxTailGeometry.FILE, new FoxTailGeometry.Reload());
+    public static void registerTailModelReload(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(new FoxTailGeometry.Reload());
     }
 
     @SubscribeEvent 
     public static void addPlayerLayers(EntityRenderersEvent.AddLayers event) {
         // Attach a tail layer to each player skin model, including normal and slim.
-        for (PlayerModelType type : event.getSkins()) {
-            AvatarRenderer<AbstractClientPlayer> playRenderer = event.getPlayerRenderer(type);
+        for (PlayerSkin.Model type : event.getSkins()) {
+            PlayerRenderer playRenderer = event.getSkin(type);
             if (playRenderer != null) {
                 playRenderer.addLayer(new FoxTailRenderLayers(playRenderer));
             }

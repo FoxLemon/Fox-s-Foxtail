@@ -2,6 +2,9 @@
 # Gradle fills in placeholder values from gradle.properties when building the mod.
 # The completed file is packaged as META-INF/neoforge.mods.toml in the JAR.
 
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+
 # License displayed in the Mods menu, supplied by gradle.properties.
 license="${mod_license}"
 
@@ -67,7 +70,7 @@ ${mod_description}
 [[dependencies.${mod_id}]]
     modId="minecraft"
     type="required"
-    # Uses the configured range; [26.1.2] accepts only that exact version.
+    # Uses the configured range; [1.21.1] accepts only that exact version.
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"

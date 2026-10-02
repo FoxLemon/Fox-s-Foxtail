@@ -18,7 +18,7 @@ import net.minecraft.client.model.geom.builders.CubeListBuilder;
 import net.minecraft.client.model.geom.builders.LayerDefinition;
 import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -30,7 +30,7 @@ import org.slf4j.Logger;
 // named bones are the animation contract; decorative children may vary freely.
 final class FoxTailGeometry {
     private static final Logger LOGGER = LogUtils.getLogger();
-    static final Identifier FILE = Identifier.fromNamespaceAndPath(
+    static final ResourceLocation FILE = ResourceLocation.fromNamespaceAndPath(
         FoxsFoxTail.MODID, "model/entity/fox_tail.json");
     private static final Geometry BUNDLED = readBundled();
     private static volatile Geometry active = BUNDLED;
@@ -39,7 +39,7 @@ final class FoxTailGeometry {
 
     static Geometry current() { return active; }
 
-    record Geometry(LayerDefinition layer, Identifier texture, Vec3 attachment,
+    record Geometry(LayerDefinition layer, ResourceLocation texture, Vec3 attachment,
                     Vec3 rootPivot, AABB rootBox, AABB middleBox, AABB tipBox) {
         FoxTailModel bakeModel() {
             // Every renderer needs its own mutable ModelParts for animation.
@@ -84,7 +84,7 @@ final class FoxTailGeometry {
         if (json.get("format").getAsInt() != 1) {
             throw new IllegalArgumentException("Unsupported tail model format");
         }
-        Identifier texture = Identifier.parse(json.get("texture").getAsString());
+        ResourceLocation texture = ResourceLocation.parse(json.get("texture").getAsString());
         JsonArray textureSize = array(json, "texture_size", 2);
         int width = textureSize.get(0).getAsInt();
         int height = textureSize.get(1).getAsInt();

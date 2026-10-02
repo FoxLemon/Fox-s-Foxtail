@@ -1,22 +1,28 @@
 package net.foxlemon.foxsfoxtail.client;
 
-import net.minecraft.client.model.EntityModel;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
-import net.minecraft.util.context.ContextKey;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.phys.Vec3;
 
 // Tail animation. FoxTailGeometry supplies the geometry and collision guides.
-public class FoxTailModel extends EntityModel<AvatarRenderState> {
+public class FoxTailModel extends Model {
 
     // Child segments inherit their parent's motion: tail -> middle -> tip.
     private final ModelPart tail;
     private final ModelPart middle;
     private final ModelPart tip;
+    private final ModelPart root;
     private final Vec3 attachment;
 
+    record Pose(Vec3 root, Vec3 middle, Vec3 tip, double angle, Vec3 avoidance) {}
+
     public FoxTailModel(ModelPart root, Vec3 attachment) {
-        super(root);
+        // Cull back faces so zero-thickness planes do not draw both UV faces together.
+        super(RenderType::entityCutout);
+        this.root = root;
         this.attachment = attachment;
         // These bone names are the shared contract for model packs and animation.
         this.tail = root.getChild("tail");
@@ -29,29 +35,30 @@ public class FoxTailModel extends EntityModel<AvatarRenderState> {
     ModelPart middleCollisionPart() { return middle; }
     ModelPart tipCollisionPart() { return tip; }
 
-    @Override
-    public void setupAnim(AvatarRenderState state) {
-        super.setupAnim(state);
-
-        setupAvoidance(state);
-
-        setupPhysics(middle, state, FoxTailClient.MIDDLE_ROTATION);
-        setupPhysics(tip, state, FoxTailClient.TIP_ROTATION);
+    void setupPose(Pose pose) {
+        root.getAllParts().forEach(ModelPart::resetPose);
+        setupAvoidance(pose);
+        setupPhysics(middle, pose.middle());
+        setupPhysics(tip, pose.tip());
     }
 
-    private void setupPhysics(ModelPart part, AvatarRenderState state, ContextKey<Vec3> key) {
-        Vec3 rotation = state.getRenderDataOrDefault(key, Vec3.ZERO);
+    @Override
+    public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int light, int overlay, int color) {
+        root.render(poseStack, buffer, light, overlay, color);
+    }
+
+    private void setupPhysics(ModelPart part, Vec3 rotation) {
         part.zRot += (float) rotation.z;
         part.yRot += (float) rotation.y;
         part.xRot += (float) rotation.x;
     }
 
-    private void setupAvoidance(AvatarRenderState state) {
-        Vec3 rootRotation = state.getRenderDataOrDefault(FoxTailClient.ROOT_ROTATION, Vec3.ZERO);
-        float angle = (float) -Math.toRadians(state.getRenderDataOrDefault(FoxTailClient.TAIL_ANGLE, 0.0))
+    private void setupAvoidance(Pose pose) {
+        Vec3 rootRotation = pose.root();
+        float angle = (float) -Math.toRadians(pose.angle())
             + (float) rootRotation.z;
 
-        Vec3 avoidance = state.getRenderDataOrDefault(FoxTailClient.TAIL_AVOIDANCE, Vec3.ZERO);
+        Vec3 avoidance = pose.avoidance();
         float twist = (float) Math.toRadians(avoidance.x) + (float) rootRotation.x;
         float sway = (float) Math.toRadians(avoidance.y) + (float) rootRotation.y;
 

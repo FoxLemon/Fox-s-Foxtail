@@ -3,7 +3,6 @@ package net.foxlemon.foxsfoxtail.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -22,34 +21,33 @@ final class TailBlockCollision {
     private TailBlockCollision() {}
 
     static Bends sample(FoxTailModel model, FoxTailGeometry.Geometry geometry,
-                        PoseStack poseStack, AvatarRenderState state,
-                        ClientLevel level, AbstractClientPlayer player, Vector3f entityOrigin) {
+                        PoseStack poseStack, ClientLevel level, AbstractClientPlayer player,
+                        Vec3 worldPosition, Vector3f entityOrigin) {
         // The render layer has already positioned the tail behind the player's torso.
         // Pose each part so the probes inherit the same root, middle, and tip rotations.
-        model.setupAnim(state);
         poseStack.pushPose();
         model.rootCollisionPart().translateAndRotate(poseStack);
-        Vec3 root = bendForBox(poseStack.last().pose(), geometry.rootBox(), state, level, player, entityOrigin);
+        Vec3 root = bendForBox(poseStack.last().pose(), geometry.rootBox(), worldPosition, level, player, entityOrigin);
 
         poseStack.pushPose();
         model.middleCollisionPart().translateAndRotate(poseStack);
-        Vec3 middle = bendForBox(poseStack.last().pose(), geometry.middleBox(), state, level, player, entityOrigin);
+        Vec3 middle = bendForBox(poseStack.last().pose(), geometry.middleBox(), worldPosition, level, player, entityOrigin);
 
         poseStack.pushPose();
         model.tipCollisionPart().translateAndRotate(poseStack);
-        Vec3 tip = bendForBox(poseStack.last().pose(), geometry.tipBox(), state, level, player, entityOrigin);
+        Vec3 tip = bendForBox(poseStack.last().pose(), geometry.tipBox(), worldPosition, level, player, entityOrigin);
         poseStack.popPose();
         poseStack.popPose();
         poseStack.popPose();
         return new Bends(root, middle, tip);
     }
 
-    private static Vec3 bendForBox(Matrix4f transform, AABB localBox, AvatarRenderState state,
+    private static Vec3 bendForBox(Matrix4f transform, AABB localBox, Vec3 worldPosition,
                                    ClientLevel level, AbstractClientPlayer player, Vector3f entityOrigin) {
         // The enclosing AABB only finds nearby blocks. Test the actual rotated
         // guide as well, without enlarging the collision volume from Blockbench.
-        AABB worldBox = worldBox(transform, localBox, state, entityOrigin);
-        OrientedBox guide = orientedBox(transform, localBox, state, entityOrigin);
+        AABB worldBox = worldBox(transform, localBox, worldPosition, entityOrigin);
+        OrientedBox guide = orientedBox(transform, localBox, worldPosition, entityOrigin);
         Vec3 push = Vec3.ZERO;
         // Minecraft supplies world-space shapes, including slabs, fences, and modded block shapes.
         for (VoxelShape shape : level.getBlockCollisions(player, worldBox)) {
@@ -60,11 +58,11 @@ final class TailBlockCollision {
         if (push.lengthSqr() == 0) return Vec3.ZERO;
         if (push.lengthSqr() > MAX_PUSH * MAX_PUSH) push = push.normalize().scale(MAX_PUSH);
 
-        Vec3 pivot = worldPoint(transform, 0, 0, 0, state, entityOrigin);
+        Vec3 pivot = worldPoint(transform, 0, 0, 0, worldPosition, entityOrigin);
         Vec3 center = worldPoint(transform,
             (localBox.minX + localBox.maxX) * 0.5 / 16.0,
             (localBox.minY + localBox.maxY) * 0.5 / 16.0,
-            (localBox.minZ + localBox.maxZ) * 0.5 / 16.0, state, entityOrigin);
+            (localBox.minZ + localBox.maxZ) * 0.5 / 16.0, worldPosition, entityOrigin);
         Vec3 lever = center.subtract(pivot);
         double inverseLever = 1.0 / Math.max(lever.lengthSqr(), 1.0 / 256.0);
         Vec3 torque = lever.cross(push);
@@ -84,16 +82,16 @@ final class TailBlockCollision {
         torque = torque.scale(inverseLever);
 
         // Convert the world-space push into rotations around this segment's local axes.
-        Vec3 xAxis = worldPoint(transform, 1, 0, 0, state, entityOrigin).subtract(pivot).normalize();
-        Vec3 yAxis = worldPoint(transform, 0, 1, 0, state, entityOrigin).subtract(pivot).normalize();
-        Vec3 zAxis = worldPoint(transform, 0, 0, 1, state, entityOrigin).subtract(pivot).normalize();
+        Vec3 xAxis = worldPoint(transform, 1, 0, 0, worldPosition, entityOrigin).subtract(pivot).normalize();
+        Vec3 yAxis = worldPoint(transform, 0, 1, 0, worldPosition, entityOrigin).subtract(pivot).normalize();
+        Vec3 zAxis = worldPoint(transform, 0, 0, 1, worldPosition, entityOrigin).subtract(pivot).normalize();
         return new Vec3(
             clamp(torque.dot(xAxis)),
             clamp(torque.dot(yAxis)),
             clamp(torque.dot(zAxis)));
     }
 
-    private static AABB worldBox(Matrix4f transform, AABB box, AvatarRenderState state,
+    private static AABB worldBox(Matrix4f transform, AABB box, Vec3 worldPosition,
                                  Vector3f entityOrigin) {
         double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, minZ = Double.POSITIVE_INFINITY;
         double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
@@ -103,7 +101,7 @@ final class TailBlockCollision {
                     Vec3 point = worldPoint(transform,
                         (x == 0 ? box.minX : box.maxX) / 16.0,
                         (y == 0 ? box.minY : box.maxY) / 16.0,
-                        (z == 0 ? box.minZ : box.maxZ) / 16.0, state, entityOrigin);
+                        (z == 0 ? box.minZ : box.maxZ) / 16.0, worldPosition, entityOrigin);
                     minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
                     minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
                     minZ = Math.min(minZ, point.z); maxZ = Math.max(maxZ, point.z);
@@ -114,22 +112,22 @@ final class TailBlockCollision {
     }
 
     private static Vec3 worldPoint(Matrix4f transform, double x, double y, double z,
-                                   AvatarRenderState state, Vector3f entityOrigin) {
+                                   Vec3 worldPosition, Vector3f entityOrigin) {
         Vector3f point = transform.transformPosition((float) x, (float) y, (float) z, new Vector3f());
-        return new Vec3(state.x + point.x - entityOrigin.x,
-            state.y + point.y - entityOrigin.y,
-            state.z + point.z - entityOrigin.z);
+        return new Vec3(worldPosition.x + point.x - entityOrigin.x,
+            worldPosition.y + point.y - entityOrigin.y,
+            worldPosition.z + point.z - entityOrigin.z);
     }
 
     private static OrientedBox orientedBox(Matrix4f transform, AABB box,
-                                           AvatarRenderState state, Vector3f origin) {
+                                           Vec3 worldPosition, Vector3f origin) {
         Vec3 center = worldPoint(transform, (box.minX + box.maxX) / 32,
-            (box.minY + box.maxY) / 32, (box.minZ + box.maxZ) / 32, state, origin);
-        Vec3 pivot = worldPoint(transform, 0, 0, 0, state, origin);
+            (box.minY + box.maxY) / 32, (box.minZ + box.maxZ) / 32, worldPosition, origin);
+        Vec3 pivot = worldPoint(transform, 0, 0, 0, worldPosition, origin);
         Vec3[] edges = {
-            worldPoint(transform, 1, 0, 0, state, origin).subtract(pivot),
-            worldPoint(transform, 0, 1, 0, state, origin).subtract(pivot),
-            worldPoint(transform, 0, 0, 1, state, origin).subtract(pivot)
+            worldPoint(transform, 1, 0, 0, worldPosition, origin).subtract(pivot),
+            worldPoint(transform, 0, 1, 0, worldPosition, origin).subtract(pivot),
+            worldPoint(transform, 0, 0, 1, worldPosition, origin).subtract(pivot)
         };
         double[] halfSizes = {(box.maxX - box.minX) / 32,
             (box.maxY - box.minY) / 32, (box.maxZ - box.minZ) / 32};

@@ -1,11 +1,12 @@
 package net.foxlemon.foxsfoxtail.client;
 
 import net.foxlemon.foxsfoxtail.FoxTailConfig;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.ModConfigSpec;
@@ -156,35 +157,52 @@ public final class TailSettingsScreen extends Screen {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
-        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
         int top = height / 2 - 111;
-        graphics.centeredText(font, title, width / 2, top + 8, 0xFFFFFFFF);
+        graphics.drawCenteredString(font, title, width / 2, top + 8, 0xFFFFFFFF);
         if (minecraft.player != null) {
-            // Use a separate render state so the preview cannot move the real player's tail.
-            var state = minecraft.getEntityRenderDispatcher().getPlayerRenderer(minecraft.player)
-                .createRenderState(minecraft.player, partialTick);
-            state.bodyRot = 25;
-            state.yRot = 0;
-            state.xRot = 0;
-            state.setRenderData(FoxTailClient.TAIL_ANGLE, draft[TAIL_ANGLE]);
+            // Temporarily use the preview spring outputs while rendering this player.
             float fraction = Math.max(0, Math.min(1, partialTick));
-            state.setRenderData(FoxTailClient.ROOT_ROTATION,
-                previousRootPreview.lerp(rootPreview, fraction));
-            state.setRenderData(FoxTailClient.MIDDLE_ROTATION,
-                previousMiddlePreview.lerp(middlePreview, fraction));
-            state.setRenderData(FoxTailClient.TIP_ROTATION,
-                previousTipPreview.lerp(tipPreview, fraction));
-            FoxTailClient.disablePhysicsRecording(state);
-            graphics.entity(state, 55, new Vector3f(0, state.boundingBoxHeight / 2, 0),
-                new Quaternionf().rotateZ((float) Math.PI), null,
-                previewLeft + 2, top + 25, previewLeft + previewWidth, top + 194);
-            graphics.centeredText(font, "Impulse preview",
+            FoxTailClient.setPreviewPose(new FoxTailModel.Pose(
+                previousRootPreview.lerp(rootPreview, fraction),
+                previousMiddlePreview.lerp(middlePreview, fraction),
+                previousTipPreview.lerp(tipPreview, fraction), draft[TAIL_ANGLE], Vec3.ZERO));
+            var player = minecraft.player;
+            float bodyYaw = player.yBodyRot;
+            float previousBodyYaw = player.yBodyRotO;
+            float headYaw = player.yHeadRot;
+            float previousHeadYaw = player.yHeadRotO;
+            float yaw = player.getYRot();
+            float pitch = player.getXRot();
+            float previousPitch = player.xRotO;
+            try {
+                // Fix the preview view behind the player so the tail stays visible.
+                player.yBodyRot = player.yBodyRotO = 0;
+                player.yHeadRot = player.yHeadRotO = 0;
+                player.setYRot(0);
+                player.setXRot(0);
+                player.xRotO = 0;
+                InventoryScreen.renderEntityInInventory(graphics,
+                    previewLeft + previewWidth / 2, top + 112, 55,
+                    new Vector3f(0, player.getBbHeight() / 2, 0),
+                    new Quaternionf().rotateZ((float) Math.PI), null, player);
+            } finally {
+                player.yBodyRot = bodyYaw;
+                player.yBodyRotO = previousBodyYaw;
+                player.yHeadRot = headYaw;
+                player.yHeadRotO = previousHeadYaw;
+                player.setYRot(yaw);
+                player.setXRot(pitch);
+                player.xRotO = previousPitch;
+                FoxTailClient.setPreviewPose(null);
+            }
+            graphics.drawCenteredString(font, "Impulse preview",
                 previewLeft + previewWidth / 2, top + 202, 0xFFAAAAAA);
         } else {
-            graphics.centeredText(font, "Join a world",
+            graphics.drawCenteredString(font, "Join a world",
                 previewLeft + previewWidth / 2, top + 85, 0xFFAAAAAA);
-            graphics.centeredText(font, "for a preview",
+            graphics.drawCenteredString(font, "for a preview",
                 previewLeft + previewWidth / 2, top + 98, 0xFFAAAAAA);
         }
     }
