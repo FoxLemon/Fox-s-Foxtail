@@ -79,6 +79,7 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
             FoxTailClient.recordBlockCollision(renderState, bends);
         }
 
+        // Cull back faces so zero-thickness planes do not draw both UV faces together.
         // Use the player's hurt/death overlay so the tail flashes red with the body.
         collector
             .order(1)
@@ -86,7 +87,7 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
                 this.model, 
                 renderState, 
                 poseStack, 
-                RenderTypes.entityCutout(geometry.texture()),
+                RenderTypes.entityCutoutCull(geometry.texture()),
                 lightCoords, 
                 LivingEntityRenderer.getOverlayCoords(renderState, 0.0F),
                 renderState.outlineColor, 
