@@ -73,11 +73,14 @@ public class FoxTailClient {
     // Leg-clearance offsets in degrees, unlike the spring rotations above.
     public  static final ContextKey<Vec3> TAIL_AVOIDANCE = 
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "tail_avoidance"));
+    // Visibility is separate from physics recording so the settings preview keeps its tail.
+    private static final ContextKey<Boolean> VISIBLE_TAIL =
+        new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "visible_tail"));
     // Marks the local player's render state so other players cannot drive our spring.
     private static final ContextKey<Boolean> LOCAL_TAIL =
         new ContextKey<>(Identifier.fromNamespaceAndPath(FoxsFoxTail.MODID, "local_tail"));
 
-    // Only this player owns simulated motion; remote players receive a resting pose.
+    // Only this player owns simulated motion; remote players do not render a tail.
     private static AbstractClientPlayer trackedPlayer;
 
     // Each segment owns its spring and the two snapshots used for smooth rendering.
@@ -271,6 +274,10 @@ public class FoxTailClient {
         state.setRenderData(LOCAL_TAIL, false);
     }
 
+    public static boolean shouldRenderTail(AvatarRenderState state) {
+        return state.getRenderDataOrDefault(VISIBLE_TAIL, false);
+    }
+
     public static boolean shouldSampleBlockCollision(AvatarRenderState state) {
         // Accept at most one gameplay collision sample per tick, never a settings preview.
         return state.getRenderDataOrDefault(LOCAL_TAIL, false)
@@ -307,7 +314,7 @@ public class FoxTailClient {
             @Override
             public <T extends Avatar & ClientAvatarEntity> void accept(T avatar, AvatarRenderState state) {
 
-                // Other players receive no simulated bend; physics currently tracks only our player.
+                // Initialize all data on every extraction because render states can be reused.
                 Vec3 rootRotation = Vec3.ZERO;
                 Vec3 middleRotation = Vec3.ZERO;
                 Vec3 tipRotation = Vec3.ZERO;
@@ -333,6 +340,10 @@ public class FoxTailClient {
                 state.setRenderData(TIP_ROTATION, tipRotation);
                 state.setRenderData(TAIL_ANGLE, rootAngle);
                 state.setRenderData(LOCAL_TAIL, localPlayer);
+                // Use the actual client player for visibility even before the first physics tick.
+                var clientPlayer = Minecraft.getInstance().player;
+                state.setRenderData(VISIBLE_TAIL, clientPlayer != null
+                    && avatar.getUUID().equals(clientPlayer.getUUID()));
             }
         });
     }

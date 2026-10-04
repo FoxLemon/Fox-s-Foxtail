@@ -36,7 +36,7 @@ The JAR from this project is for NeoForge. Other Minecraft versions and loaders 
 - A settings screen with sliders, number input boxes, an animated preview, Reset defaults, Save, and Cancel.
 - An optional key binding to open the settings screen, unassigned by default.
 
-Movement-driven physics and block contact currently run for the local player only. Other players can render with tails, but do not receive their own simulated motion on your client. Entity collision is not included.
+The tail renders only on your own player, including the settings preview. Physics and block contact also run locally. Other players are not given tails, and entity collision is not included.
 
 ## Installation
 
@@ -44,7 +44,7 @@ Movement-driven physics and block contact currently run for the local player onl
 2. Place the built mod JAR in that instance's `mods` folder.
 3. Launch Minecraft and switch to third person to see the tail.
 
-The tail rendering and settings run on the client. Other players need the mod on their own clients to see its effects. Compatibility with animation mods and modpacks still needs individual testing.
+The tail rendering and settings run on the client. Other players cannot see your 3D tail; installing the mod lets each person see their own tail. Detecting other mod users and sharing tails is not implemented. Compatibility with animation mods and modpacks still needs individual testing.
 
 ## Settings
 

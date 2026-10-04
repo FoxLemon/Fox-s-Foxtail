@@ -29,6 +29,9 @@ public class FoxTailRenderLayers extends RenderLayer<AvatarRenderState, PlayerMo
 
     @Override 
     public void submit(PoseStack poseStack, SubmitNodeCollector collector, int lightCoords, AvatarRenderState renderState, float yRot, float xRot) {
+        // Player renderers are shared; attaching this layer must not give every player a tail.
+        if (!FoxTailClient.shouldRenderTail(renderState)) return;
+
         FoxTailGeometry.Geometry current = FoxTailGeometry.current();
         if (current != geometry) {
             geometry = current;
