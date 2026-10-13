@@ -275,7 +275,9 @@ public class FoxTailClient {
     }
 
     public static boolean shouldRenderTail(AvatarRenderState state) {
-        return state.getRenderDataOrDefault(VISIBLE_TAIL, false);
+        // Hide this body attachment during invisibility and spectator's head-only rendering.
+        return state.getRenderDataOrDefault(VISIBLE_TAIL, false)
+            && !state.isInvisible && !state.isSpectator;
     }
 
     public static boolean shouldSampleBlockCollision(AvatarRenderState state) {
